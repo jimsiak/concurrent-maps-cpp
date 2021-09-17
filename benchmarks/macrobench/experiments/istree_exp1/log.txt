@@ -1,0 +1,84 @@
+g_thr_pinning_policy=0-0
+mem_allocator initialized!
+running YCSB workload
+workload initialized!
+using NO_WAIT concurrency control
+using SERIALIZABLE isolation level
+running 1 threads
+Query Queue Init Time 0.729612
+query_queue initialized!
+Index: MAIN_INDEX
+size_node=208
+N9abtree_ns4NodeILi11EmEE_object_size=208
+N9abtree_ns4NodeILi11EmEE_allocated_count=144785253
+N9abtree_ns4NodeILi11EmEE_allocated_size=30115.3MB
+N9abtree_ns4NodeILi11EmEE_get_from_pool=0
+N9abtree_ns4NodeILi11EmEE_deallocated=130077922
+N9abtree_ns4NodeILi11EmEE_limbo_count=0
+N9abtree_ns4NodeILi11EmEE_limbo_details=0 0 0 
+
+global_epoch_counter=79892
+
+PASS! SimTime = 2893179777
+[tid=0] txn_cnt=100000,abort_cnt=0
+Per-thread per-index stats: index=MAIN_INDEX, thread=0, numContains=1600000, timeContains=1.651939, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOperations=1600000, totalTime=1.651939, throughput=968558.623334
+Per-index stats: index=MAIN_INDEX, numContains=1600000, timeContains=1.651939, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOps=1600000, totalTime=1.651939, throughput=968558.623334
+Aggregate index stats: numContains=1600000, timeContains=1.651939, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOps=1600000, totalTime=1.651939, throughput=968558.623334
+[summary] txn_cnt=100000, abort_cnt=0, run_time=2.883443, time_wait=0.000000, time_ts_alloc=0.000000, time_man=0.000000, time_index=0.000000, time_abort=0.000000, time_cleanup=0.000000, latency=0.000000, deadlock_cnt=0, cycle_detect=0, dl_detect_time=0.000000, dl_wait_time=0.000000, time_query=0.000000, debug1=0.000000, debug2=0.000000, debug3=0.000000, debug4=0.000000, debug5=0.000000, ixNumContains=1600000, ixTimeContains=1.651939, ixNumInsert=0, ixTimeInsert=0.000000, ixNumRangeQuery=0, ixTimeRangeQuery=0.000000, ixTotalOps=1600000, ixTotalTime=1.651939, ixThroughput=968558.623334, nthreads=1, throughput=34680.765810, node_size=0, descriptor_size=0
+g_thr_pinning_policy=0-0
+mem_allocator initialized!
+running YCSB workload
+workload initialized!
+using NO_WAIT concurrency control
+using SERIALIZABLE isolation level
+running 1 threads
+Query Queue Init Time 0.728711
+query_queue initialized!
+Index: MAIN_INDEX
+size_node=72
+4NodeImP8itemid_tE_object_size=72
+4NodeImP8itemid_tE_allocated_count=0
+4NodeImP8itemid_tE_allocated_size=0MB
+4NodeImP8itemid_tE_get_from_pool=0
+4NodeImP8itemid_tE_deallocated=220370042
+4NodeImP8itemid_tE_limbo_count=0
+4NodeImP8itemid_tE_limbo_details=0 0 0 
+
+global_epoch_counter=79892
+
+6KVPairImP8itemid_tE_object_size=16
+6KVPairImP8itemid_tE_allocated_count=0
+6KVPairImP8itemid_tE_allocated_size=0MB
+6KVPairImP8itemid_tE_get_from_pool=0
+6KVPairImP8itemid_tE_deallocated=16
+6KVPairImP8itemid_tE_limbo_count=0
+6KVPairImP8itemid_tE_limbo_details=0 0 0 
+
+global_epoch_counter=0
+
+16RebuildOperationImP8itemid_tE_object_size=48
+16RebuildOperationImP8itemid_tE_allocated_count=0
+16RebuildOperationImP8itemid_tE_allocated_size=0MB
+16RebuildOperationImP8itemid_tE_get_from_pool=0
+16RebuildOperationImP8itemid_tE_deallocated=20061679
+16RebuildOperationImP8itemid_tE_limbo_count=0
+16RebuildOperationImP8itemid_tE_limbo_details=0 0 0 
+
+global_epoch_counter=0
+
+12MultiCounter_object_size=272
+12MultiCounter_allocated_count=0
+12MultiCounter_allocated_size=0MB
+12MultiCounter_get_from_pool=0
+12MultiCounter_deallocated=225326
+12MultiCounter_limbo_count=0
+12MultiCounter_limbo_details=0 0 0 
+
+global_epoch_counter=0
+
+PASS! SimTime = 2434198859
+[tid=0] txn_cnt=100000,abort_cnt=0
+Per-thread per-index stats: index=MAIN_INDEX, thread=0, numContains=1600000, timeContains=1.120967, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOperations=1600000, totalTime=1.120967, throughput=1427338.726596
+Per-index stats: index=MAIN_INDEX, numContains=1600000, timeContains=1.120967, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOps=1600000, totalTime=1.120967, throughput=1427338.726596
+Aggregate index stats: numContains=1600000, timeContains=1.120967, numInsert=0, timeInsert=0.000000, numRangeQuery=0, timeRangeQuery=0.000000, totalOps=1600000, totalTime=1.120967, throughput=1427338.726596
+[summary] txn_cnt=100000, abort_cnt=0, run_time=2.424097, time_wait=0.000000, time_ts_alloc=0.000000, time_man=0.000000, time_index=0.000000, time_abort=0.000000, time_cleanup=0.000000, latency=0.000000, deadlock_cnt=0, cycle_detect=0, dl_detect_time=0.000000, dl_wait_time=0.000000, time_query=0.000000, debug1=0.000000, debug2=0.000000, debug3=0.000000, debug4=0.000000, debug5=0.000000, ixNumContains=1600000, ixTimeContains=1.120967, ixNumInsert=0, ixTimeInsert=0.000000, ixNumRangeQuery=0, ixTimeRangeQuery=0.000000, ixTotalOps=1600000, ixTotalTime=1.120967, ixThroughput=1427338.726596, nthreads=1, throughput=41252.475262, node_size=0, descriptor_size=0
