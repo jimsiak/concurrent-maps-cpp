@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../rcu-htm/ht.h"
 #include "../map_if.h"
 #include "Log.h"
 
@@ -52,6 +53,144 @@ private:
 	};
 
 	node_t *root;
+
+public:
+	/**
+	 * RCU-HTM adapting methods.
+	 **/
+	bool traverse_with_stack(const K& key, void **stack,
+	                         int *stack_indexes, int *stack_top)
+	{
+		node_t *parent, *leaf;
+		node_t **node_stack = (node_t **)stack;
+	
+		parent = NULL;
+		leaf = root;
+		*stack_top = -1;
+	
+		while (leaf) {
+			node_stack[++(*stack_top)] = leaf;
+			stack_indexes[*stack_top] = (key <= leaf->key) ? 0 : 1;
+
+			if (IS_EXTERNAL_NODE(leaf)) break;
+			parent = leaf;
+			leaf = (key <= leaf->key) ? leaf->left : leaf->right;
+		}
+
+		if (*stack_top < 0) return false;
+		else return (node_stack[*stack_top]->key == key);
+	}
+	void install_copy(void *connpoint, void *privcopy,
+	                  int *node_stack_indexes, int connpoint_stack_index)
+	{
+		node_t *connection_point = (node_t *)connpoint;
+		node_t *tree_copy_root = (node_t *)privcopy;
+		if (!connection_point) {
+			root = tree_copy_root;
+		} else {
+			int index = node_stack_indexes[connpoint_stack_index];
+			if (index == 0) connection_point->left = tree_copy_root;
+			else            connection_point->right = tree_copy_root;
+		}
+
+	}
+	void validate_copy(void **stack, int *node_stack_indexes,
+	                   int stack_top)
+	{
+		node_t **node_stack = (node_t **)stack;
+		node_t *n1, *n2;
+
+		if (stack_top < 0 && root != NULL)
+			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (stack_top >= 0 && root != node_stack[0])
+			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (stack_top >= 0 && node_stack_indexes[stack_top] == 0 && node_stack[stack_top]->left != NULL)
+			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (stack_top >= 0 && node_stack_indexes[stack_top] == 1 && node_stack[stack_top]->right != NULL)
+			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		for (int i=0; i < stack_top; i++) {
+			n1 = node_stack[i];
+			int index = node_stack_indexes[i];
+			n2 = (node_t *)((index == 0) ? n1->left : n1->right);
+			if (n2 != node_stack[i+1])
+					TX_ABORT(ABORT_VALIDATION_FAILURE);
+		}
+	
+		for (int i=0; i < HT_LEN; i++) {
+			for (int j=0; j < tdata->ht->bucket_next_index[i]; j+=2) {
+				node_t **np = (node_t **)tdata->ht->entries[i][j];
+				node_t  *n  = (node_t *)tdata->ht->entries[i][j+1];
+				if (*np != n)
+					TX_ABORT(ABORT_VALIDATION_FAILURE);
+			}
+		}
+
+	}
+	void *insert_with_copy(const K& key, const V& value, void **stack,
+	                       int *stack_indexes, int stack_top, void **privcopy,
+	                       int *connpoint_stack_index)
+	{
+		node_t **node_stack = (node_t **)stack;
+		node_t *leaf = node_stack[stack_top];
+		node_t *new_internal;
+
+		// Create new internal and leaf nodes.
+		new_internal = new node_t(key, value);
+
+		// If tree was not empty
+		if (stack_top >= 0) {
+			if (key <= leaf->key) {
+				new_internal->left = new node_t(key, value);
+				new_internal->right = leaf;
+			} else {
+				new_internal->left = leaf;
+				new_internal->right = new node_t(key, value);
+				new_internal->key = leaf->key;
+			}
+		}
+
+		node_t *connection_point;
+		*connpoint_stack_index = (stack_top > 0) ? stack_top - 1 : -1;
+		connection_point = (stack_top > 0) ?
+		                    node_stack[*connpoint_stack_index] : NULL;
+
+		*privcopy = (void *)new_internal;
+		return (void *)connection_point;
+	}
+	void *delete_with_copy(const K& key, void **stack, int *unused,
+	                       int *_stack_top, void **privcopy,
+	                       int *connpoint_stack_index)
+	{
+		int stack_top = *_stack_top;
+		node_t **node_stack = (node_t **)stack;
+
+		assert(stack_top >= 0);
+
+		if (stack_top == 0) {
+			*privcopy = NULL;
+			*connpoint_stack_index = -1;
+			return NULL;
+		} else if (stack_top == 1) {
+			node_t *parent = node_stack[0];
+			*privcopy = (void *)((key <= parent->key) ? parent->right : parent->left);
+			*connpoint_stack_index = -1;
+			return NULL;
+		} else {
+			node_t *parent = node_stack[stack_top - 1];
+			node_t *gparent = node_stack[stack_top - 2];
+	
+			if (key <= parent->key) {
+				*privcopy = (void *)parent->right;
+				ht_insert(tdata->ht, &parent->right, *privcopy);
+			} else {
+				*privcopy = parent->left;
+				ht_insert(tdata->ht, &parent->left, *privcopy);
+			}
+			*connpoint_stack_index = stack_top - 2;
+			return gparent;
+		}
+	}
+
 
 private:
 
