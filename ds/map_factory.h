@@ -90,6 +90,8 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new cg_ds<K,V>(-1, NULL, 88, map);
 	else if (sync_type == "rcu-htm")
 		map = new rcu_htm<K,V>(-1, NULL, 88, map);
+	else if (sync_type == "rcu-sgl")
+		map = new rcu_htm<K,V>(-1, NULL, 88, map, 0);
 
 	return map;
 }

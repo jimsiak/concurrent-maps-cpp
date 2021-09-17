@@ -13,7 +13,9 @@
 template <typename K, typename V>
 class rcu_htm : public Map<K,V> {
 public:
-	rcu_htm(const K _NO_KEY, const V _NO_VALUE, const int numProcesses, Map<K,V> *seq_ds)
+	rcu_htm(const K _NO_KEY, const V _NO_VALUE, const int numProcesses, Map<K,V> *seq_ds,
+	        const int num_retries = 10)
+	   : TX_NUM_RETRIES(num_retries)
 	{
 		this->seq_ds = seq_ds;
 		pthread_spin_init(&updaters_lock, PTHREAD_PROCESS_SHARED);
@@ -38,8 +40,8 @@ public:
 	{
 		char *seqds= seq_ds->name();
 		char *name = new char[60];
-		strcpy(name, seqds);
-		strcat(name, " (RCU-HTM)");
+		const char *sync = (TX_NUM_RETRIES > 0) ? "RCU-HTM" : "RCU-SGL";
+		sprintf(name, "%s (%s) [%d retries]", seqds, sync, TX_NUM_RETRIES);
 		return name;
 	}
 
@@ -48,7 +50,7 @@ public:
 
 private:
 	const int MAX_STACK_LEN = 64;
-	const int TX_NUM_RETRIES = 10; //> FIXME
+	const int TX_NUM_RETRIES; //> FIXME
 	Map<K,V> *seq_ds;
 	char padding[64];
 
