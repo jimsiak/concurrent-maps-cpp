@@ -118,6 +118,30 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
+
+			//> If its is an (a-b)-tree we should also rebalance here.
+			if (seq_ds->is_abtree()) {
+				if (!installed) continue;
+
+				int should_rebalance = 1;
+				while (should_rebalance) {
+					ht_reset(tdata->ht);
+					seq_ds->traverse_for_rebalance(key, &should_rebalance,
+					                               node_stack, node_stack_indexes,
+					                               &stack_top);
+					if (!should_rebalance) break;
+					connection_point = seq_ds->rebalance_with_copy(key,
+					                           node_stack, node_stack_indexes,
+					                           stack_top, &should_rebalance, &tree_cp_root,
+					                           &connection_point_stack_index);
+					bool installed = validate_and_install_copy(connection_point, tree_cp_root,
+				                                           node_stack, node_stack_indexes,
+				                                           stack_top,
+				                                           connection_point_stack_index);
+					if (!installed) break;
+				}
+			}
+
 			if (installed) return 1;
 		}
 
@@ -167,6 +191,30 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
+
+			//> If its is an (a-b)-tree we should also rebalance here.
+			if (seq_ds->is_abtree()) {
+				if (!installed) continue;
+
+				int should_rebalance = 1;
+				while (should_rebalance) {
+					ht_reset(tdata->ht);
+					seq_ds->traverse_for_rebalance(key, &should_rebalance,
+					                               node_stack, node_stack_indexes,
+					                               &stack_top);
+					if (!should_rebalance) break;
+					connection_point = seq_ds->rebalance_with_copy(key,
+					                           node_stack, node_stack_indexes,
+					                           stack_top, &should_rebalance, &tree_cp_root,
+					                           &connection_point_stack_index);
+					bool installed = validate_and_install_copy(connection_point, tree_cp_root,
+				                                           node_stack, node_stack_indexes,
+				                                           stack_top,
+				                                           connection_point_stack_index);
+					if (!installed) break;
+				}
+			}
+
 			if (installed) return 1;
 		}
 

@@ -72,4 +72,15 @@ public:
 	                               int *stack_indexes, int *stack_top, void **privcopy,
 	                               int *connpoint_stack_index) { return NULL; };
 
+	//> These are needed only for the (a-b)-tree where we need to do rebalance
+	//> asynchronously after the insertion or deletion
+	virtual bool is_abtree() { return false; };
+	virtual void traverse_for_rebalance(const K& key, int *should_rebalance,
+	                                    void **stack, int *stack_indexes,
+	                                    int *stack_top) {}; 
+	virtual void *rebalance_with_copy(const K& key, void **stack,
+	                                  int *stack_indexes, int stack_top,
+	                                  int *should_rebalance, void **privcopy,
+	                                  int *connpoint_stack_index) { return NULL; };
+
 };
