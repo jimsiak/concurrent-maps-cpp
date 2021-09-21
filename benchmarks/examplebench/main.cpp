@@ -2,13 +2,20 @@
 #include <string>
 #include "../../ds/map_factory.h"
 
-int main()
+int main(int argc, char **argv)
 {
 	const int tid = 0; //> Single thread.
 
-	std::string map_type("bst-unb-ext");
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s <map-type>\n", argv[0]);
+		return 1;
+	}
+
+	std::string map_type(argv[1]);
 	std::string sync_type("");
 	Map<int, void*> *mapds = createMap<int, void*>(map_type, sync_type);
+
+	printf("map-type: %s\n", argv[1]);
 
 	mapds->initThread(tid);
 	for (int i=0; i < 100; i++)
