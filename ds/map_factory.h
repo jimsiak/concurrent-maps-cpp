@@ -27,6 +27,9 @@
 //#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
 //#include "lock-free/bwtree_wang/wang.h"
 
+#include "cop/avl_internal.h"
+#include "cop/avl_external.h"
+
 #include "cg-sync/cg_ds.h"
 
 #include "rcu-htm/rcu-htm.h"
@@ -82,6 +85,11 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 //		map = new abtree_brown<K,V>(-1, NULL, 88);
 //	else if (type == "bwtree-wang")
 //		map = new bwtree_wang<K,V>(-1, NULL, 88);
+	//> COP-based
+	else if (type == "avl-int-cop")
+		map = new avl_int_cop<K,V>(-1, NULL, 88);
+	else if (type == "avl-ext-cop")
+		map = new avl_ext_cop<K,V>(-1, NULL, 88);
 	else
 		map = NULL;
 
