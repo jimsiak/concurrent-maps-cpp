@@ -1,6 +1,8 @@
 # Concurrent Map Implementations in C++
 
-This directory contains all the implementations of sequential and concurrent
+:grinning: :grinning: :grinning: :grinning: :grinning:
+
+This repo contains all the implementations of sequential and concurrent
 data structures that implement the dictionary (a.k.a. map) ADT.
 
 ## An example usage of a Map data structure (single-thread)
@@ -62,3 +64,32 @@ Briefly, a Map data structure provides the following basic operations:
 
 
 ## Type of keys and values stored in a Map data structure
+
+## Which data structures are currently implemented?
+
+Currently the following data structures have been implemented:
+
+### Sequential
+
+* Unbalanced Binary Search Tree
+  * Internal
+  * Partially External
+  * External
+* AVL Binary Search Tree
+  * Internal
+  * Partially External
+  * External
+* Red-Black Binary Search Tree
+  * Internal
+  * External
+* Treap Binary Search Tree
+* B+-tree
+* (a-b)-tree
+
+### Lock-based
+
+### Lock-free
+
+### RCU and HTM based
+
+### RCU-HTM based
