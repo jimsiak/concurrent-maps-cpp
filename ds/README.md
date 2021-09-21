@@ -88,8 +88,15 @@ Currently the following data structures have been implemented:
 
 ### Lock-based
 
+* Relaxed Partially External AVL BST by Bronson et. al [[1]](#1).
+
 ### Lock-free
 
 ### RCU and HTM based
 
 ### RCU-HTM based
+
+## References
+<a id="1">[1]</a> 
+Bronson, N. (2010). 
+A Practical Concurrent Binary Search Tree.
