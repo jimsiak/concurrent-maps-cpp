@@ -88,9 +88,16 @@ Currently the following data structures have been implemented:
 
 ### Lock-based
 
+* Unbalanced External BST with hand-over-hand locking.
 * Relaxed Partially External AVL BST by Bronson et. al [[1]](#1).
+* Relaxed Internal AVL BST by Drachsler et. al [[2]](#2).
+* Relaxed Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[3]](#3).
 
 ### Lock-free
+
+* Unbalanced Internal BST by Ellen et. al [[4]](#4).
+* Unbalanced Internal BST by Howley et. al [[5]](#5).
+* Unbalanced External BST by Natarajan et. al [[6]](#6).
 
 ### RCU and HTM based
 
@@ -98,5 +105,25 @@ Currently the following data structures have been implemented:
 
 ## References
 <a id="1">[1]</a> 
-Bronson, N. (2010). 
+Bronson (2010). 
 A Practical Concurrent Binary Search Tree.
+
+<a id="2">[2]</a> 
+Drachsler (2014). 
+Practical concurrent binary search trees via logical ordering.
+
+<a id="3">[3]</a> 
+Crain (2013). 
+The Contention-Friendly Tree.
+
+<a id="4">[4]</a> 
+Ellen (2010). 
+Non-blocking Binary Search Trees.
+
+<a id="5">[5]</a> 
+Howley (2012). 
+A non-blocking internal binary search tree.
+
+<a id="6">[6]</a> 
+Crain (2014). 
+Fast concurrent lock-free binary search trees.
