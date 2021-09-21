@@ -51,6 +51,21 @@ public:
 	virtual void print() { NOT_IMPLEMENTED(); }
 	virtual unsigned long long size() { NOT_IMPLEMENTED(); return -1; }
 
+
+public:
+	/**
+	 * The interface necessary for Contention-adaptive synchronization
+	 **/
+	virtual const K& max_key() { return -1; };
+	virtual const K& min_key() { return -1; };
+	virtual void *split(void **right_part) { return NULL; };
+	virtual void *join(void *treap_right) { return NULL; };
+
+	virtual bool validate(bool print) { return false; };
+
+	virtual bool is_empty() { return true; };
+	virtual long long get_key_sum() { return -1; };
+
 public:
 	/**
 	 * The interface necessary for RCU-HTM synchronization

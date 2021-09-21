@@ -206,20 +206,9 @@ public:
 
 	bool validate() { return validate(true); }
 
-	char *name() { return (char *)"Treap Sequential"; }
+	char *name() { return (char *)"Treap"; }
 
 public:
-	/**
-	 * The public methods that make this class usable with contention-adaptive
-	 * synchronization.
-	 **/
-
-	K max_key();
-	K min_key();
-
-	treap_t *split(treap_t **right_part);
-	treap_t *join(treap_t *treap_right);
-
 	bool validate(bool print);
 
 	unsigned long long size() { return size_rec(root); }
@@ -434,6 +423,84 @@ private:
 			total_keys += external->nr_keys;
 		}
 	}
+
+public:
+	/**
+	 * The public methods that make this class usable with contention-adaptive
+	 * synchronization.
+	 **/
+
+	const K& max_key()
+	{
+		node_internal_t *internal;
+		node_external_t *external;
+		node_t *curr = root;
+	
+		while (curr->is_internal()) {
+			internal = (node_internal_t *)curr;
+			curr = internal->right;
+		}
+		external = (node_external_t *)curr;
+		return external->keys[external->nr_keys-1];
+	}
+	
+	const K& min_key()
+	{
+		node_internal_t *internal;
+		node_external_t *external;
+		node_t *curr = root;
+	
+		while (curr->is_internal()) {
+			internal = (node_internal_t *)curr;
+			curr = internal->left;
+		}
+		external = (node_external_t *)curr;
+		return external->keys[0];
+	}
+	
+	//> Splits the treap in two treaps.
+	//> The left part is returned and the right part is put in *right_part
+	void *split(void **_right_part)
+	{
+		treap_t **right_part = (treap_t **)_right_part;
+		int i;
+		treap_t *right_treap;
+		node_internal_t *internal;
+		node_external_t *external;
+	
+		*right_part = NULL;
+		if (!root) return NULL;
+	
+		right_treap = new treap_t();
+		if (root->is_internal()) {
+			internal = (node_internal_t *)root;
+			right_treap->root = internal->right;
+			root = internal->left;
+		} else {
+			external = (node_external_t *)root;
+			right_treap->root = (node_t *)external->split();
+		}
+		*right_part = right_treap;
+		return (void *)this;
+	}
+	
+	//> Joins 'this' and treap_right and returns the joint treap
+	void *join(void *_treap_right)
+	{
+		treap_t *treap_right = (treap_t *)_treap_right;
+		treap_t *treap_left = this;
+		node_internal_t *new_internal;
+	
+		if (!treap_left->root) return treap_right;
+		else if (!treap_right->root) return treap_left;
+	
+		new_internal = new node_internal_t(treap_left->max_key());
+		new_internal->left = treap_left->root;
+		new_internal->right = treap_right->root;
+	
+		treap_left->root = (node_t *)new_internal;
+		return (void *)treap_left;
+	}
 };
 
 TREAP_TEMPLATE
@@ -598,76 +665,4 @@ bool TREAP::validate(bool print)
 	return check_bst && check_heap;
 }
 
-TREAP_TEMPLATE
-K TREAP::max_key()
-{
-	node_internal_t *internal;
-	node_external_t *external;
-	node_t *curr = root;
 
-	while (curr->is_internal()) {
-		internal = (node_internal_t *)curr;
-		curr = internal->right;
-	}
-	external = (node_external_t *)curr;
-	return external->keys[external->nr_keys-1];
-}
-
-TREAP_TEMPLATE
-K TREAP::min_key()
-{
-	node_internal_t *internal;
-	node_external_t *external;
-	node_t *curr = root;
-
-	while (curr->is_internal()) {
-		internal = (node_internal_t *)curr;
-		curr = internal->left;
-	}
-	external = (node_external_t *)curr;
-	return external->keys[0];
-}
-
-//> Splits the treap in two treaps.
-//> The left part is returned and the right part is put in *right_part
-TREAP_TEMPLATE
-typename TREAP::treap_t *TREAP::split(treap_t **right_part)
-{
-	int i;
-	treap_t *right_treap;
-	node_internal_t *internal;
-	node_external_t *external;
-
-	*right_part = NULL;
-	if (!root) return NULL;
-
-	right_treap = new treap_t();
-	if (root->is_internal()) {
-		internal = (node_internal_t *)root;
-		right_treap->root = internal->right;
-		root = internal->left;
-	} else {
-		external = (node_external_t *)root;
-		right_treap->root = (node_t *)external->split();
-	}
-	*right_part = right_treap;
-	return this;
-}
-
-//> Joins 'this' and treap_right and returns the joint treap
-TREAP_TEMPLATE
-typename TREAP::treap_t *TREAP::join(treap_t *treap_right)
-{
-	treap_t *treap_left = this;
-	node_internal_t *new_internal;
-
-	if (!treap_left->root) return treap_right;
-	else if (!treap_right->root) return treap_left;
-
-	new_internal = new node_internal_t(treap_left->max_key());
-	new_internal->left = treap_left->root;
-	new_internal->right = treap_right->root;
-
-	treap_left->root = (node_t *)new_internal;
-	return treap_left;
-}

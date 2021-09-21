@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -13,100 +12,91 @@
 #include "../map_if.h"
 #include "Stack.h"
 
-using namespace std;
-
 #define STAT_LOCK_HIGH_CONTENTION_LIMIT 1000
 #define STAT_LOCK_LOW_CONTENTION_LIMIT -1000
 #define STAT_LOCK_FAIL_CONTRIB 250
 #define STAT_LOCK_SUCC_CONTRIB 1
 
-class caNode {
-public:
-
-	bool is_valid_;
-	bool is_route_;
-
-public:
-
-	caNode() {
-		is_valid_ = 0;
-		is_route_ = 0;
-	}
-
-	bool is_route() { return is_route_; }
-	bool is_valid() { return is_valid_; }
-};
-
-template<typename K, class Compare>
-class caRouteNode : public caNode {
-public:
-	
-	K key;
-	caNode *left, *right;
-	pthread_spinlock_t lock_;
-
-public:
-
-	caRouteNode(K key)
-	{
-		this->is_route_ = 1;
-		this->is_valid_ = 1;
-		this->key = key;
-		this->left = this->right = NULL;
-		pthread_spin_init(&lock_, PTHREAD_PROCESS_SHARED);
-	}
-
-	void lock() { pthread_spin_lock(&lock_); }
-	void unlock() { pthread_spin_unlock(&lock_); }
-};
-
-template<typename K, class Compare, class SEQ_DS>
-class caBaseNode : public caNode {
-public:
-
-	SEQ_DS *root;
-	long long int lock_statistics;
-	pthread_spinlock_t lock_;
-
-public:
-
-	caBaseNode(K key)
-	{
-		this->is_route_ = 0;
-		this->is_valid_ = 1;
-		this->lock_statistics = 0;
-		this->root = new SEQ_DS();
-		pthread_spin_init(&lock_, PTHREAD_PROCESS_SHARED);
-	}
-
-	void lock()
-	{
-		if (pthread_spin_trylock(&lock_) == 0) {
-			//> No contention
-			lock_statistics -= STAT_LOCK_SUCC_CONTRIB;
-		} else {
-			//> Could not lock with trylock(), we have to block
-			pthread_spin_lock(&lock_);
-			lock_statistics += STAT_LOCK_FAIL_CONTRIB;
-		}
-	}
-	int trylock()
-	{
-		return pthread_spin_trylock(&lock_);
-	}
-	void unlock()
-	{
-		pthread_spin_unlock(&lock_);
-	}
-};
-
-template<typename K, typename V, class Compare, class SEQ_DS>
+template<typename K, typename V>
 class ca_locks : public Map<K,V> {
 private:
-	Compare cmp;
+	//> Kept here for use in name()
+	char *seq_ds_name;
+
+	//> This is the base class for a CA node.
+	class caNode {
+	public:
+		bool is_valid_;
+		bool is_route_;
+	public:
+		caNode() {
+			is_valid_ = 0;
+			is_route_ = 0;
+		}
+		bool is_route() { return is_route_; }
+		bool is_valid() { return is_valid_; }
+	};
+	
+	//> This is a route CA node.
+	class caRouteNode : public caNode {
+	public:
+		K key;
+		caNode *left, *right;
+		pthread_spinlock_t lock_;
+	public:
+		caRouteNode(K key)
+		{
+			this->is_route_ = 1;
+			this->is_valid_ = 1;
+			this->key = key;
+			this->left = this->right = NULL;
+			pthread_spin_init(&lock_, PTHREAD_PROCESS_SHARED);
+		}
+		void lock() { pthread_spin_lock(&lock_); }
+		void unlock() { pthread_spin_unlock(&lock_); }
+	};
+	
+	//> This is the base CA node, which points to a sequential data structure.
+	class caBaseNode : public caNode {
+	public:
+		Map<K,V> *root; //> this points to the sequential data structure
+		long long int lock_statistics;
+		pthread_spinlock_t lock_;
+	public:
+		caBaseNode(K key, Map<K,V> *root)
+		{
+			this->is_route_ = 0;
+			this->is_valid_ = 1;
+			this->lock_statistics = 0;
+			this->root = root;
+//			this->root = new SEQ_DS();
+			pthread_spin_init(&lock_, PTHREAD_PROCESS_SHARED);
+		}
+	
+		void lock()
+		{
+			if (pthread_spin_trylock(&lock_) == 0) {
+				//> No contention
+				lock_statistics -= STAT_LOCK_SUCC_CONTRIB;
+			} else {
+				//> Could not lock with trylock(), we have to block
+				pthread_spin_lock(&lock_);
+				lock_statistics += STAT_LOCK_FAIL_CONTRIB;
+			}
+		}
+		int trylock()
+		{
+			return pthread_spin_trylock(&lock_);
+		}
+		void unlock()
+		{
+			pthread_spin_unlock(&lock_);
+		}
+	};
+
 	typedef caNode node_t;
-	typedef caRouteNode<K, Compare> route_node_t;
-	typedef caBaseNode<K, Compare, SEQ_DS> base_node_t;
+	typedef caRouteNode route_node_t;
+	typedef caBaseNode base_node_t;
 
 	typedef struct {
 		int tid,
@@ -122,8 +112,7 @@ private:
 	} tdata_t;
 	tdata_t *tdata_array[88];
 
-public:
-
+private:
 	node_t *root;
 	pthread_spinlock_t lock;
 
@@ -138,8 +127,8 @@ private:
 			gp = p;
 			p = (route_node_t *)curr;
 			rnode = (route_node_t *)curr;
-			if (cmp(key, rnode->key) || key == rnode->key) curr = rnode->left;
-			else                                           curr = rnode->right;
+			if (key < rnode->key || key == rnode->key) curr = rnode->left;
+			else                                       curr = rnode->right;
 		}
 		*parent = p;
 		*gparent = gp;
@@ -153,8 +142,8 @@ private:
 		while (curr->is_route()) {
 			stack->push(curr);
 			rnode = (route_node_t *)curr;
-			if (cmp(key, rnode->key) || key == rnode->key) curr = rnode->left;
-			else                                           curr = rnode->right;
+			if (key < rnode->key || key == rnode->key) curr = rnode->left;
+			else                                       curr = rnode->right;
 		}
 		stack->push(curr);
 		return (base_node_t *)curr;
@@ -200,9 +189,9 @@ private:
 	
 		if (bnode->root->size() < 10) return;
 	
-		left_bnode = new base_node_t(-1);
-		right_bnode = new base_node_t(-1);
-		left_bnode->root = bnode->root->split(&right_bnode->root);
+		left_bnode = new base_node_t(-1, NULL);
+		right_bnode = new base_node_t(-1, NULL);
+		left_bnode->root = (Map<K,V> *)bnode->root->split((void **)&right_bnode->root);
 
 		assert(left_bnode->root != NULL);
 	
@@ -230,7 +219,7 @@ private:
 	
 		if (parent == NULL) return;
 	
-		new_bnode = new base_node_t(-1);
+		new_bnode = new base_node_t(-1, NULL);
 	
 		if (parent->left == (node_t *)bnode) {
 			sibling = parent->right;
@@ -255,7 +244,7 @@ private:
 			bnode->is_valid_ = 0;
 			parent->is_valid_ = 0;
 	
-			new_bnode->root = bnode->root->join(lmost_base->root);
+			new_bnode->root = (Map<K,V> *)bnode->root->join((void *)lmost_base->root);
 			if (lmparent == parent) lmparent = gparent; //> lmparent has been spliced out
 			if (lmparent == NULL) root = (node_t *)new_bnode;
 			else if (lmparent->left == (node_t *)lmost_base)
@@ -287,7 +276,7 @@ private:
 			bnode->is_valid_ = 0;
 			parent->is_valid_ = 0;
 	
-			new_bnode->root = rmost_base->root->join(bnode->root);
+			new_bnode->root = (Map<K,V> *)rmost_base->root->join((void *)bnode->root);
 			if (rmparent == parent) rmparent = gparent; //> rmparent has been spliced out
 			if (rmparent == NULL) root = (node_t *)new_bnode;
 			else if (rmparent->left == (node_t *)rmost_base)
@@ -443,7 +432,7 @@ public:
 				bnode->lock_statistics -= STAT_LOCK_SUCC_CONTRIB;
 				tdata->rquery_bnodes[nbase_nodes++] = bnode;
 				if (!bnode->is_valid()) goto out_with_valid_error;
-				if (!bnode->root->is_empty() && !cmp(bnode->root->max_key(), key2)) break;
+				if (!bnode->root->is_empty() && !(bnode->root->max_key() < key2)) break;
 				route_node_t *parent, *gparent;
 				parent = (route_node_t *)tdata->access_path.pop();
 				gparent = (route_node_t *)tdata->access_path.pop();
@@ -579,10 +568,11 @@ public:
 	//> This is the public interface the benchmarks use
 	//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-	ca_locks(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	ca_locks(const K _NO_KEY, const V _NO_VALUE, const int numProcesses, Map<K,V> *seq_ds)
 	{
 		pthread_spin_init(&lock, PTHREAD_PROCESS_SHARED);
-		root = (node_t *)new base_node_t(-1);
+		root = (node_t *)new base_node_t(-1, seq_ds);
+		seq_ds_name = seq_ds->name();
 	}
 	~ca_locks()
 	{
@@ -643,7 +633,13 @@ public:
 		return do_validate();
 	}
 
-	char *name() { return "Contention-adaptive"; }
+	char *name()
+	{
+		char *seqds= seq_ds_name;
+		char *name = new char[60];
+		sprintf(name, "%s (%s)", seqds, "Contention-adaptive");
+		return name;
+	}
 
 	long long debugKeySum()
 	{
@@ -652,16 +648,5 @@ public:
 	long long getSize()
 	{
 		return 0;
-	}
-	string getSizeString()
-	{
-		stringstream ss;
-		ss << "Please implement this :-)";
-		return ss.str();
-	}
-
-	void *const debugGetRecMgr()
-	{
-		return NULL;
 	}
 };
