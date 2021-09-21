@@ -22,10 +22,10 @@
 
 #include "lock-free/bst_unb_natarajan.h"
 #include "lock-free/bst_unb_ellen.h"
-//#include "lock-free/bst_unb_howley.h"
-//#include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
-//#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
-//#include "lock-free/bwtree_wang/wang.h"
+#include "lock-free/bst_unb_howley.h"
+#include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
+#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
+#include "lock-free/bwtree_wang/wang.h"
 
 #include "cop/avl_internal.h"
 #include "cop/avl_external.h"
@@ -77,14 +77,14 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new bst_unb_natarajan<K,V>(-1, NULL, 88);
 	else if (type == "bst-unb-ellen")
 		map = new bst_unb_ellen<K,V>(-1, NULL, 88);
-//	else if (type == "bst-unb-howley")
-//		map = new bst_unb_howley<K,V>(-1, NULL, 88);
-//	else if (type == "ist-brown")
-//		map = new ist_brown<K,V>(-1, NULL, 88);
-//	else if (type == "abtree-brown")
-//		map = new abtree_brown<K,V>(-1, NULL, 88);
-//	else if (type == "bwtree-wang")
-//		map = new bwtree_wang<K,V>(-1, NULL, 88);
+	else if (type == "bst-unb-howley")
+		map = new bst_unb_howley<K,V>(-1, NULL, 88);
+	else if (type == "ist-brown")
+		map = new ist_brown<K,V>(-1, NULL, 88);
+	else if (type == "abtree-brown")
+		map = new abtree_brown<K,V>(-1, NULL, 88);
+	else if (type == "bwtree-wang")
+		map = new bwtree_wang<K,V>(-1, NULL, 88);
 	//> COP-based
 	else if (type == "avl-int-cop")
 		map = new avl_int_cop<K,V>(-1, NULL, 88);
@@ -93,6 +93,10 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 	else
 		map = NULL;
 
+	if (!map) {
+		std::cerr << "Wrong data structure type provided\n";
+		exit(1);
+	}
 
 	if (sync_type == "cg-sync")
 		map = new cg_ds<K,V>(-1, NULL, 88, map);
