@@ -31,6 +31,8 @@ __thread void* seek_record_threadlocal; //FIXME is this OK to be here??
 
 template <typename K, typename V>
 class bst_unb_natarajan: public Map<K,V> {
+private:
+	const V NO_VALUE = NULL;
 public:
 	bst_unb_natarajan(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	{
@@ -117,10 +119,8 @@ private:
 			seek_record_l.leaf = current;
 	
 			parent_field = current_field;
-			if (key < current->key)
-				current_field = (node_t*) current->left;
-			else
-				current_field = (node_t*) current->right;
+			if (key < current->key) current_field = (node_t*) current->left;
+			else                    current_field = (node_t*) current->right;
 	
 			current = ADDRESS(current_field);
 		}
@@ -132,7 +132,6 @@ private:
 	}
 	
 	int search(const K& key, node_t *node_r) {
-		int nr_nodes;
 		seek_record_t *seek_record = (seek_record_t*)seek_record_threadlocal;
 		seek(key, node_r);
 		return (seek_record->leaf->key == key);
@@ -144,18 +143,16 @@ private:
 
 	int cleanup(const K& key) {
 		seek_record_t *seek_record = (seek_record_t*)seek_record_threadlocal;
-		node_t* ancestor = seek_record->ancestor;
-		node_t* successor = seek_record->successor;
-		node_t* parent = seek_record->parent;
+		node_t *ancestor = seek_record->ancestor;
+		node_t *successor = seek_record->successor;
+		node_t *parent = seek_record->parent;
 	
-		node_t** succ_addr;
-		if (key < ancestor->key)
-			succ_addr = (node_t**) &(ancestor->left);
-		else
-			succ_addr = (node_t**) &(ancestor->right);
+		node_t **succ_addr;
+		if (key < ancestor->key) succ_addr = (node_t**) &(ancestor->left);
+		else                     succ_addr = (node_t**) &(ancestor->right);
 	
-		node_t** child_addr;
-		node_t** sibling_addr;
+		node_t **child_addr;
+		node_t **sibling_addr;
 		if (key < parent->key) {
 			child_addr = (node_t**) &(parent->left);
 			sibling_addr = (node_t**) &(parent->right);
@@ -164,29 +161,29 @@ private:
 			sibling_addr = (node_t**) &(parent->left);
 		}
 	
-		node_t* chld = *(child_addr);
+		node_t *chld = *child_addr;
 		if (!GETFLAG(chld)) {
-			chld = *(sibling_addr);
+			chld = *sibling_addr;
 			asm volatile("");
 			sibling_addr = child_addr;
 		}
 	
 		while (1) {
-			node_t* untagged = *sibling_addr;
-			node_t* tagged = (node_t*)TAG(untagged);
-			node_t* res = CAS_PTR(sibling_addr,untagged, tagged);
-			if (res == untagged)
-				break;
+			node_t *untagged = *sibling_addr;
+			node_t *tagged = TAG(untagged);
+			node_t *res = CAS_PTR(sibling_addr, untagged, tagged);
+			if (res == untagged) break;
 		}
 	
-		node_t* sibl = *sibling_addr;
-		if ( CAS_PTR(succ_addr, ADDRESS(successor), UNTAG(sibl)) == ADDRESS(successor))
+		node_t *sibl = *sibling_addr;
+		if (CAS_PTR(succ_addr, ADDRESS(successor), UNTAG(sibl)) == ADDRESS(successor))
 			return 1;
+
 		return 0;
 	}
 
-	int do_insert(const K& key, const V& val, unsigned *created,
-	              node_t **new_internal, node_t **new_node)
+	bool do_insert(const K& key, const V& val, unsigned *created,
+	               node_t **new_internal, node_t **new_node)
 	{
 		seek_record_t *seek_record = (seek_record_t*)seek_record_threadlocal;
 		node_t *parent = seek_record->parent;
@@ -214,15 +211,15 @@ private:
 	
 		node_t *result = CAS_PTR(child_addr, ADDRESS(leaf), ADDRESS(*new_internal));
 		if (result == ADDRESS(leaf))
-			return 1;
+			return true;
 	
 		node_t *chld = *child_addr; 
 		if ((ADDRESS(chld)==leaf) && (GETFLAG(chld) || GETTAG(chld)))
 			cleanup(key);
-		return 0;
+		return false;
 	}
 
-	int insert_helper(const K& key, const V& val)
+	const V insert_helper(const K& key, const V& val)
 	{
 		seek_record_t *seek_record = (seek_record_t*)seek_record_threadlocal;
 		node_t *new_internal = NULL, *new_node = NULL;
@@ -230,16 +227,15 @@ private:
 		while (1) {
 			seek(key, root);
 			if (seek_record->leaf->key == key)
-	            return 0;
+	            return seek_record->leaf->value;
 			if (do_insert(key, val, &created, &new_internal, &new_node))
-				return 1;
+				return NO_VALUE;
 		}
 	}
 
 	int do_remove(const K& key, int *injecting, node_t **leaf)
 	{
 		seek_record_t *seek_record = (seek_record_t*)seek_record_threadlocal;
-		V val = seek_record->leaf->value;
 		node_t *parent = seek_record->parent;
 		node_t **child_addr;
 		node_t *lf, *result, *chld;
@@ -274,8 +270,7 @@ private:
 		return -1;
 	}
 	
-	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		int ret, injecting = 1;
 		node_t *leaf;
@@ -283,19 +278,20 @@ private:
 		while (1) {
 			seek(key, root);
 			ret = do_remove(key, &injecting, &leaf);
-			if (ret != -1) return ret;
+			if (ret == 1) return leaf->value;
+			else if (ret == 0) return NO_VALUE;
 	    }
 	}
 
 //static int bst_update(skey_t key, sval_t val, node_t* node_r) {
-//	int nr_nodes, ret, injecting = 1;
+//	int ret, injecting = 1;
 //	node_t *leaf;
 //	node_t *new_internal = NULL, *new_node = NULL;
 //	uint created = 0;
 //	int op_is_insert = -1;
 //
 //	while (1) {
-//		bst_seek(key, node_r, &nr_nodes);
+//		bst_seek(key, node_r);
 //		if (op_is_insert == -1) {
 //			if (seek_record->leaf->key == key) op_is_insert = 0;
 //			else                               op_is_insert = 1;
@@ -428,17 +424,14 @@ const V BST_UNB_NATARAJAN_FUNCT::insert(const int tid, const K& key, const V& va
 BST_UNB_NATARAJAN_TEMPL
 const V BST_UNB_NATARAJAN_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_NATARAJAN_TEMPL
 const std::pair<V,bool> BST_UNB_NATARAJAN_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, (ret != NO_VALUE));
 }
 
 BST_UNB_NATARAJAN_TEMPL
