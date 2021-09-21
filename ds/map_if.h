@@ -22,9 +22,12 @@ public:
 	Map() {};
 	~Map() {};
 
+	//> Thread initialize/finalize functions. Called by each thread that will
+	//> perform operations on the map.
 	virtual void initThread(const int tid) = 0;
 	virtual void deinitThread(const int tid) = 0;
 
+	//> Map operations. Thread-safe.
 	virtual bool                    contains(const int tid, const K& key) = 0;
 	virtual const std::pair<V,bool> find(const int tid, const K& key) = 0;
 	virtual int                     rangeQuery(const int tid,
@@ -37,8 +40,10 @@ public:
 	                                               const V& val) = 0;
 	virtual const std::pair<V,bool> remove(const int tid, const K& key) = 0;
 
+	//> Functions that are called by only one thread before or after the
+	//> execution of any benchmark on the map.
 	virtual bool  validate() = 0;
-	virtual char *name() { return (char *)"Baseline Map Class"; }
+	virtual char *name() = 0;
 	
 	//> Methods that are used for debugging.
 	//> These are not pure virtual to allow newly implemented data structures
