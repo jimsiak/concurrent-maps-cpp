@@ -41,7 +41,7 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 	Map<K,V> *map;
 
 	//> Sequential data structures
-	if (type == "treap-seq")
+	if (type == "treap")
 		map = new Treap<K,V>(-1, NULL, 88);
 	else if (type == "bst-unb-int")
 		map = new bst_unb_int<K,V>(-1, NULL, 88);

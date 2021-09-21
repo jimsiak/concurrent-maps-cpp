@@ -7,29 +7,26 @@
 #include "Stack.h"
 #include "../map_if.h"
 
-template<typename K, class Compare>
+template<typename K>
 class TreapNode {
-	private:
+private:
 	bool is_internal_;
 
-	public:
+public:
 	bool is_internal() { return is_internal_; };
 	void set_internal(bool yes) { is_internal_ = yes; }
 };
 
 //> 'left' and 'right' point either to internal or external type of nodes
-template<typename K, class Compare>
-class TreapNodeInternal : TreapNode<K, Compare> {
-	private:
-	Compare cmp; // cmp(l, r) return true if l < r, false otherwise
-
-	public:
+template<typename K>
+class TreapNodeInternal : TreapNode<K> {
+public:
 	K key;
 	unsigned long long weight;
-	TreapNode<K,Compare> *left,
-	                     *right;
+	TreapNode<K> *left,
+	             *right;
 
-	public:
+public:
 	TreapNodeInternal(K key_)
 	{
 		this->set_internal(true);
@@ -44,18 +41,17 @@ class TreapNodeInternal : TreapNode<K, Compare> {
 	}
 };
 
-template<typename K, typename V, class Compare, int DEGREE>
-class TreapNodeExternal : TreapNode<K, Compare> {
-	private:
-	Compare cmp; // cmp(l, r) return true if l < r, false otherwise
-	typedef TreapNodeExternal<K, V, Compare, DEGREE> node_external_t;
+template<typename K, typename V, int DEGREE>
+class TreapNodeExternal : TreapNode<K> {
+private:
+	typedef TreapNodeExternal<K, V, DEGREE> node_external_t;
 
-	public:
+public:
 	int nr_keys;
 	K keys[DEGREE];
 	V values[DEGREE];
 
-	public:
+public:
 	TreapNodeExternal(const K& key_, const V& value_)
 	{
 		this->set_internal(false);
@@ -80,9 +76,9 @@ class TreapNodeExternal : TreapNode<K, Compare> {
 	bool validate(K min, K max)
 	{
 		for (int i=1; i < nr_keys; i++)
-			if (cmp(keys[i], keys[i-1]))
+			if (keys[i] < keys[i-1])
 				return false;
-		if (cmp(keys[0], min) || cmp(max, keys[nr_keys-1]))
+		if (keys[0] < min || max < keys[nr_keys-1])
 			return false;
 		return true;
 	}
@@ -94,7 +90,7 @@ class TreapNodeExternal : TreapNode<K, Compare> {
 	{
 		for (int i=0; i < nr_keys; i++) {
 			if (keys[i] == key) return i;
-			if (cmp(key, keys[i])) return -1;
+			if (key < keys[i]) return -1;
 		}
 		return -1;
 	}
@@ -106,7 +102,7 @@ class TreapNodeExternal : TreapNode<K, Compare> {
 	{
 		for (int i=0; i < nr_keys; i++) {
 			if (keys[i] == key) return i;
-			if (cmp(key, keys[i])) return i;
+			if (key < keys[i]) return i;
 		}
 		return nr_keys;
 	}
@@ -129,7 +125,7 @@ class TreapNodeExternal : TreapNode<K, Compare> {
 		assert(nr_keys < DEGREE);
 
 		int i = nr_keys;
-		while (i-1 >= 0 && cmp(key, keys[i-1])) {
+		while (i-1 >= 0 && key < keys[i-1]) {
 			keys[i] = keys[i-1];
 			values[i] = values[i-1];
 			i--;
@@ -159,19 +155,18 @@ class TreapNodeExternal : TreapNode<K, Compare> {
 };
 
 
-#define TREAP_TEMPLATE_DEFAULT template<typename K, typename V, class Compare = std::less<K>, int DEGREE = 64>
-#define TREAP_TEMPLATE template<typename K, typename V, class Compare, int DEGREE>
-#define TREAP Treap<K,V,Compare,DEGREE>
+#define TREAP_TEMPLATE_DEFAULT template<typename K, typename V, int DEGREE = 64>
+#define TREAP_TEMPLATE template<typename K, typename V, int DEGREE>
+#define TREAP Treap<K,V,DEGREE>
 
 TREAP_TEMPLATE_DEFAULT
 class Treap : public Map<K,V> {
 private:
 
-	Compare cmp; // cmp(l, r) return true if l < r, false otherwise
-	typedef Treap<K, V, Compare, DEGREE> treap_t;
-	typedef TreapNode<K, Compare> node_t;
-	typedef TreapNodeInternal<K, Compare> node_internal_t;
-	typedef TreapNodeExternal<K, V, Compare, DEGREE> node_external_t;
+	typedef Treap<K, V, DEGREE> treap_t;
+	typedef TreapNode<K> node_t;
+	typedef TreapNodeInternal<K> node_internal_t;
+	typedef TreapNodeExternal<K, V, DEGREE> node_external_t;
 
 	node_t *root;
 
@@ -287,7 +282,7 @@ private:
 	
 		while (curr != NULL && curr->is_internal()) {
 			internal = (node_internal_t *)curr;
-			curr = (cmp(internal->key, key)) ? internal->right : internal->left;
+			curr = (internal->key < key) ? internal->right : internal->left;
 		}
 		return (node_external_t *)curr;
 	}
@@ -301,7 +296,7 @@ private:
 		while (curr != NULL && curr->is_internal()) {
 			internal = (node_internal_t *)curr;
 			stack->push(internal);
-			curr = (cmp(internal->key, key)) ? internal->right : internal->left;
+			curr = (internal->key < key) ? internal->right : internal->left;
 		}
 		//> Also add the final external node in the stack
 		if (curr != NULL) stack->push(curr);
@@ -352,7 +347,7 @@ private:
 	
 		//> 2. No space left in the external node, need to split
 		new_external = external->split();
-		if (cmp(key, external->keys[external->nr_keys-1]))
+		if (key < external->keys[external->nr_keys-1])
 			external->insert(key, value);
 		else
 			new_external->insert(key, value);
@@ -365,8 +360,8 @@ private:
 		if (parent == NULL) {
 			root = (node_t *)new_internal;
 		} else {
-			if (cmp(new_internal->key, parent->key)) parent->left = (node_t *)new_internal;
-			else                                     parent->right = (node_t *)new_internal;
+			if (new_internal->key < parent->key) parent->left = (node_t *)new_internal;
+			else                                 parent->right = (node_t *)new_internal;
 	
 			stack->push(parent);
 			stack->push(new_internal);
@@ -423,7 +418,7 @@ private:
 			internal = (node_internal_t *)n;
 			if (internal->weight > max_priority)
 				heap_violations++;
-			if (cmp(internal->key, min) || cmp(max, internal->key))
+			if (internal->key < min || max < internal->key)
 				bst_violations++;
 			validate_rec(internal->left, min, internal->key, internal->weight, depth+1);
 			validate_rec(internal->right, internal->key, max, internal->weight, depth+1);
@@ -459,7 +454,7 @@ const std::pair<V,bool> TREAP::find(const int tid, const K& key)
 
 TREAP_TEMPLATE
 int TREAP::rangeQuery(const int tid, const K& key1, const K& key2,
-               std::vector<std::pair<K,V>> kv_pairs)
+                      std::vector<std::pair<K,V>> kv_pairs)
 {
 	node_t *curr, *prev = NULL;
 	node_external_t *external;
@@ -496,9 +491,9 @@ int TREAP::rangeQuery(const int tid, const K& key1, const K& key2,
 			key_index = external->index_of_equal_or_larger(key1);
 			while (key_index < external->nr_keys &&
 			       (external->keys[key_index] == key1 ||
-			        cmp(key1, external->keys[key_index])) &&
+			        key1 < external->keys[key_index]) &&
 			       (external->keys[key_index] == key2 ||
-			        cmp(external->keys[key_index], key2))) {
+			        external->keys[key_index] < key2)) {
 				kv_pairs.push_back(std::pair<K,V>(external->keys[key_index],
 				                                  external->values[key_index++]));
 			}
@@ -581,7 +576,7 @@ bool TREAP::validate(bool print)
 	min_depth = 100000;
 	max_depth = -1;
 
-	if (root) validate_rec(root, 0, 999999999999, 999999999999, 0);
+	if (root) validate_rec(root, 0, 99999999, 9999999, 0);
 
 	check_bst = (bst_violations == 0);
 	check_heap = (heap_violations == 0);
