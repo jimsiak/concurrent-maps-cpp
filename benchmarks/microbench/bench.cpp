@@ -58,7 +58,7 @@ void *thread_fn(void *arg)
 		//> Generate random number.
 		choice = (unsigned)keygen_choice->next() % 100;
 		KEY_GET(key, keygen->next());
-		if (key == 0) key = 1;
+		key++; // To avoid having 0 key
 
 		data->operations_performed[OPS_TOTAL]++;
 
@@ -98,6 +98,7 @@ void *thread_fn(void *arg)
 			retp = map->insertIfAbsent(tid, key, (map_val_t)key);
 			ret = (retp == NULL);
 			data->operations_succeeded[OPS_INSERT] += ret;
+			if (retp) assert(retp == (map_val_t)key);
 		} else {
 			//> Deletion
 			data->operations_performed[OPS_DELETE]++;
@@ -105,6 +106,7 @@ void *thread_fn(void *arg)
 			retp = map->remove(tid, key);
 			ret = retp.second;
 			data->operations_succeeded[OPS_DELETE] += ret;
+			if (retp.first) assert(retp.first == (map_val_t)key);
 		}
 		data->operations_succeeded[OPS_TOTAL] += ret;
 	}
@@ -123,6 +125,7 @@ static inline int map_warmup(map_t *map, int nr_nodes, int max_key,
     srand(seed);
     while (nodes_inserted < nr_nodes) {
 		KEY_GET(key, keygen.next());
+		key++; // To avoid having 0 key
 
 		ret = map->insertIfAbsent(0, key, (map_val_t)key);
         nodes_inserted += (ret == NULL);
