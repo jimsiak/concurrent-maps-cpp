@@ -15,6 +15,7 @@ template <typename K, typename V>
 class btree : public Map<K,V> {
 public:
 	btree(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -180,7 +181,7 @@ private:
 		return (n->keys[index] == key);
 	}
 
-	int insert_helper(const K& key, const V& val)
+	const V insert_helper(const K& key, const V& val)
 	{
 		int index;
 		node_t *n, *rnode;
@@ -192,7 +193,7 @@ private:
 		traverse_with_stack(key, node_stack, node_stack_indexes, &stack_top);
 		if (stack_top >= 0 && node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
 		        node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key)
-			return 0;
+			return (V)node_stack[stack_top]->children[node_stack_indexes[stack_top] + 1];
 	
 		n = NULL;
 		K key_to_add = key;
@@ -201,7 +202,6 @@ private:
 		while (1) {
 			//> We surpassed the root. New root needs to be created.
 			if (stack_top < 0) {
-//				root = btree_node_new(n == NULL ? 1 : 0);
 				root = new node_t(n == NULL ? 1 : 0);
 				root->insert_index(0, key_to_add, ptr_to_add);
 				root->children[0] = n;
@@ -222,7 +222,7 @@ private:
 			stack_top--;
 		}
 	
-		return 1;
+		return this->NO_VALUE;
 	}
 
 	/**
@@ -343,8 +343,8 @@ private:
 		return 0;
 	}
 	
-	int do_delete(const K& key, node_t **node_stack, int *node_stack_indexes,
-	              int node_stack_top)
+	void do_delete(const K& key, node_t **node_stack, int *node_stack_indexes,
+	               int node_stack_top)
 	{
 		node_t *n = node_stack[node_stack_top];
 		int index = node_stack_indexes[node_stack_top];
@@ -381,10 +381,9 @@ private:
 			//> Move one level up
 			cur = node_stack[--node_stack_top];
 		}
-		return 1;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		int index;
 		node_t *n;
@@ -396,40 +395,42 @@ private:
 		traverse_with_stack(key, node_stack, node_stack_indexes, &node_stack_top);
 	
 		//> Empty tree case.
-		if (node_stack_top == -1) return 0;
+		if (node_stack_top == -1) return this->NO_VALUE;
 		//> Key not in the tree.
 		n = node_stack[node_stack_top];
 		index = node_stack_indexes[node_stack_top];
-		if (index >= n->no_keys || key != n->keys[index]) return 0;
+		if (index >= n->no_keys || key != n->keys[index]) return this->NO_VALUE;
 	
-		return do_delete(key, node_stack, node_stack_indexes, node_stack_top);
+		const V del_val = (V)n->children[index+1];
+		do_delete(key, node_stack, node_stack_indexes, node_stack_top);
+		return del_val;
 	}
 	
-	int btree_update(const K& key, const V& val)
-	{
-		node_t *node_stack[20];
-		int node_stack_indexes[20], node_stack_top = -1;
-		int op_is_insert = -1;
-	
-		//> Route to the appropriate leaf.
-		traverse_with_stack(key, node_stack, node_stack_indexes, &node_stack_top);
-	
-		//> Empty tree case.
-		if (node_stack_top == -1) {
-			op_is_insert = 1;
-		} else {
-			int index = node_stack_indexes[node_stack_top];
-			node_t *n = node_stack[node_stack_top];
-			if (index >= n->no_keys || key != n->keys[index]) op_is_insert = 1;
-			else if (index < 2 * BTREE_ORDER && key == n->keys[index]) op_is_insert = 0;
-		}
-		
-	
-		if (op_is_insert)
-			return do_insert(key, val, node_stack, node_stack_indexes, node_stack_top);
-		else
-			return do_delete(key, node_stack, node_stack_indexes, node_stack_top) + 2;
-	}
+//	int btree_update(const K& key, const V& val)
+//	{
+//		node_t *node_stack[20];
+//		int node_stack_indexes[20], node_stack_top = -1;
+//		int op_is_insert = -1;
+//	
+//		//> Route to the appropriate leaf.
+//		traverse_with_stack(key, node_stack, node_stack_indexes, &node_stack_top);
+//	
+//		//> Empty tree case.
+//		if (node_stack_top == -1) {
+//			op_is_insert = 1;
+//		} else {
+//			int index = node_stack_indexes[node_stack_top];
+//			node_t *n = node_stack[node_stack_top];
+//			if (index >= n->no_keys || key != n->keys[index]) op_is_insert = 1;
+//			else if (index < 2 * BTREE_ORDER && key == n->keys[index]) op_is_insert = 0;
+//		}
+//		
+//	
+//		if (op_is_insert)
+//			return do_insert(key, val, node_stack, node_stack_indexes, node_stack_top);
+//		else
+//			return do_delete(key, node_stack, node_stack_indexes, node_stack_top) + 2;
+//	}
 
 	void print_rec(node_t *root, int level)
 	{
@@ -950,17 +951,14 @@ const V BTREE_FUNCT::insert(const int tid, const K& key, const V& val)
 BTREE_TEMPL
 const V BTREE_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BTREE_TEMPL
 const std::pair<V,bool> BTREE_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BTREE_TEMPL

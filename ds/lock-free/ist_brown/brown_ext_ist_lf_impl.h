@@ -91,7 +91,8 @@ template <typename K, typename V>
 class ist_brown : public Map<K,V> {
 public:
 	ist_brown(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
-	    : prov(new dcssProvider<void *>(numProcesses))
+	  : Map<K,V>(_NO_KEY, _NO_VALUE),
+	    prov(new dcssProvider<void *>(numProcesses))
 	{
 		const int tid = 0;
 		initThread(tid);
@@ -131,8 +132,7 @@ public:
 private:
 
 	//> FIXME this should not be here, but somewhere global
-	const V NO_VALUE = NULL;
-	const K INF_KEY = 999999999;
+	const K INF_KEY = 9999999;
 	const int NUM_PROCESSES = 88;
 
 	//> FIXME this should not be here, but somewhere global
@@ -517,7 +517,7 @@ private:
 		
 		assert(IS_EMPTY_VAL(word) || !IS_VAL(word) || ix > 0);
 		K foundKey = INF_KEY;
-		foundVal = NO_VALUE;
+		foundVal = this->NO_VALUE;
 		if (IS_VAL(word)) {
 			if (!IS_EMPTY_VAL(word)) {
 				foundKey = node->key(ix-1);
@@ -530,10 +530,10 @@ private:
 			foundVal = pair->v;
 		}
 	
-		assert(foundVal == NO_VALUE ||
+		assert(foundVal == this->NO_VALUE ||
 		       ((uint64_t) foundVal & 0xE000000000000000ULL) == 0);
 		 // value must have top 3 bits empty so we can shift it
-		assert(foundVal == NO_VALUE ||
+		assert(foundVal == this->NO_VALUE ||
 		       (((size_t)foundVal << 3) >> 3) == (size_t)foundVal);
 	
 		if (foundKey == key) {
@@ -541,18 +541,18 @@ private:
 				newWord = VAL_TO_CASWORD(val);
 				// note: should NOT count towards changeSum, because
 				// it cannot affect the complexity of operations
-				if (foundVal != NO_VALUE) affectsChangeSum = false; 
+				if (foundVal != this->NO_VALUE) affectsChangeSum = false; 
 			} else if (t == InsertIfAbsent) {
-				if (foundVal != NO_VALUE) return 3;
+				if (foundVal != this->NO_VALUE) return 3;
 				newWord = VAL_TO_CASWORD(val);
 			} else {
 				assert(t == Erase);
-				if (foundVal == NO_VALUE) return 3;
+				if (foundVal == this->NO_VALUE) return 3;
 				newWord = EMPTY_VAL_TO_CASWORD;
 			}
 		} else {
 			if (t == InsertReplace || t == InsertIfAbsent) {
-				if (foundVal == NO_VALUE) {
+				if (foundVal == this->NO_VALUE) {
 					// after the insert, this pointer will lead to only one
 					// kvpair in the tree so we just create a kvpair instead of
 					// a node
@@ -570,11 +570,11 @@ private:
 					}
 					newNode = createLeaf(tid, pairs, 2);
 					newWord = NODE_TO_CASWORD(newNode);
-					foundVal = NO_VALUE; // the key we are inserting had no current value
+					foundVal = this->NO_VALUE; // the key we are inserting had no current value
 				}
 			} else {
 				assert(t == Erase);
-				foundVal = NO_VALUE;
+				foundVal = this->NO_VALUE;
 				return 3;
 			}
 		}
@@ -694,7 +694,7 @@ private:
 		while (true) {
 			if (IS_KVPAIR(ptr)) {
 				KVPair *kv = CASWORD_TO_KVPAIR(ptr);
-				return (kv->k == key) ? kv->v : NO_VALUE;
+				return (kv->k == key) ? kv->v : this->NO_VALUE;
 			} else if (IS_REBUILDOP(ptr)) {
 				auto rebuild = CASWORD_TO_REBUILDOP(ptr);
 				ptr = NODE_TO_CASWORD(rebuild->rebuildRoot);
@@ -708,10 +708,10 @@ private:
 				//> invariant: leftmost pointer cannot contain a non-empty VAL
 				//> (it contains a non-NULL pointer or an empty val casword)
 				assert(IS_EMPTY_VAL(ptr) || ixToPtr > 0); 
-				if (IS_EMPTY_VAL(ptr)) return NO_VALUE;
+				if (IS_EMPTY_VAL(ptr)) return this->NO_VALUE;
 				V v = CASWORD_TO_VAL(ptr);
 				int ixToKey = ixToPtr - 1;
-				return (parent->key(ixToKey) == key) ? v : NO_VALUE;
+				return (parent->key(ixToKey) == key) ? v : this->NO_VALUE;
 			}
 		}
 	}
@@ -1367,15 +1367,14 @@ IST_BROWN_TEMPL
 bool IST_BROWN_FUNCT::contains(const int tid, const K& key)
 {
 	V ret = lookup_helper(tid, key);
-	return (ret != NO_VALUE);
+	return (ret != this->NO_VALUE);
 }
 
 IST_BROWN_TEMPL
 const std::pair<V,bool> IST_BROWN_FUNCT::find(const int tid, const K& key)
 {
 	V ret = lookup_helper(tid, key);
-	bool found = (ret != NO_VALUE);
-	return std::pair<V,bool>(ret, found);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 IST_BROWN_TEMPL
@@ -1400,9 +1399,8 @@ const V IST_BROWN_FUNCT::insertIfAbsent(const int tid, const K& key, const V& va
 IST_BROWN_TEMPL
 const std::pair<V,bool> IST_BROWN_FUNCT::remove(const int tid, const K& key)
 {
-	V retVal = doUpdate(tid, key, NO_VALUE, Erase);
-	if (retVal == NO_VALUE) return std::pair<V,bool>(NULL, false);
-	else                    return std::pair<V,bool>(retVal, true);
+	V ret = doUpdate(tid, key, this->NO_VALUE, Erase);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 IST_BROWN_TEMPL

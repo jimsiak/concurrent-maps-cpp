@@ -171,12 +171,8 @@ private:
 	node_t *root;
 
 public:
-	Treap()
-	{
-		root = NULL;
-	}
-
 	Treap(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -471,7 +467,7 @@ public:
 		*right_part = NULL;
 		if (!root) return NULL;
 	
-		right_treap = new treap_t();
+		right_treap = new treap_t(this->INF_KEY, this->NO_VALUE, 88);
 		if (root->is_internal()) {
 			internal = (node_internal_t *)root;
 			right_treap->root = internal->right;
@@ -592,7 +588,7 @@ const V TREAP::insertIfAbsent(const int tid, const K& key, const V& val)
 	//> 1. Empty treap
 	if (stack_sz == 0) {
 		root = (node_t *)new node_external_t(key, val);
-		return NULL;
+		return this->NO_VALUE;
 	}
 	
 	external = (node_external_t *)stack.pop();
@@ -603,7 +599,7 @@ const V TREAP::insertIfAbsent(const int tid, const K& key, const V& val)
 
 	//> 3. Key not in the tree, insert it
 	_do_insert(external, &stack, key, val);
-	return NULL;
+	return this->NO_VALUE;
 }
 
 TREAP_TEMPLATE
@@ -617,16 +613,17 @@ const std::pair<V, bool> TREAP::remove(const int tid, const K& key)
 	stack_sz = stack.size();
 
 	//> 1. Empty treap
-	if (stack_sz == 0) return std::pair<V,bool>(NULL, false);
+	if (stack_sz == 0) return std::pair<V,bool>(this->NO_VALUE, false);
 
 	external = (node_external_t *)stack.pop();
 	key_index = external->index_of(key);
 
 	//> 2. Key not in the tree
-	if (key_index == -1) return std::pair<V,bool>(NULL, false);
+	if (key_index == -1) return std::pair<V,bool>(this->NO_VALUE, false);
 
+	const V del_val = external->values[key_index];
 	_do_delete(external, &stack, key_index);
-	return std::pair<V,bool>(external->values[key_index], true);
+	return std::pair<V,bool>(del_val, true);
 }
 
 TREAP_TEMPLATE

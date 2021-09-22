@@ -15,6 +15,7 @@ template <typename K, typename V>
 class bst_avl_int : public Map<K,V> {
 public:
 	bst_avl_int(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -237,7 +238,7 @@ private:
 		insert_fixup(key, node_stack, stack_top);
 	}
 
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *node_stack[MAX_HEIGHT];
 		int stack_top;
@@ -245,9 +246,9 @@ private:
 		traverse_with_stack(key, node_stack, &stack_top);
 	
 		if (stack_top >= 0 && node_stack[stack_top]->key == key)
-			return 0;
+			return node_stack[stack_top]->value;
 		do_insert(key, value, node_stack, stack_top);
-		return 1;
+		return this->NO_VALUE;
 	}
 
 	inline void find_successor_with_stack(node_t *node, node_t *node_stack[MAX_HEIGHT],
@@ -356,7 +357,7 @@ private:
 		delete_fixup(key, node_stack, stack_top);
 	}
 
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *node_stack[MAX_HEIGHT];
 		int stack_top;
@@ -365,10 +366,11 @@ private:
 	
 		// Key not in the tree
 		if (stack_top < 0 || node_stack[stack_top]->key != key)
-			return 0;
+			return this->NO_VALUE;
 	
+		const V ret = node_stack[stack_top]->value;
 		do_delete(key, node_stack, stack_top);
-		return 1;
+		return ret;
 	}
 
 	int avl_update_helper(const K& key, const V& value)
@@ -869,17 +871,14 @@ const V BST_AVL_INT_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_AVL_INT_TEMPL
 const V BST_AVL_INT_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_INT_TEMPL
 const std::pair<V,bool> BST_AVL_INT_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_INT_TEMPL

@@ -2,7 +2,6 @@
 
 #include "map_if.h"
 
-#include "contention-adaptive/ca-locks.h"
 #include "seq/treap.h"
 #include "seq/bst_unb_int.h"
 #include "seq/bst_unb_pext.h"
@@ -24,11 +23,13 @@
 #include "lock-free/bst_unb_ellen.h"
 #include "lock-free/bst_unb_howley.h"
 #include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
-#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
-#include "lock-free/bwtree_wang/wang.h"
+//#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
+//#include "lock-free/bwtree_wang/wang.h"
 
 #include "cop/avl_internal.h"
 #include "cop/avl_external.h"
+
+#include "contention-adaptive/ca-locks.h"
 
 #include "cg-sync/cg_ds.h"
 
@@ -81,10 +82,10 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new bst_unb_howley<K,V>(-1, NULL, 88);
 	else if (type == "ist-brown")
 		map = new ist_brown<K,V>(-1, NULL, 88);
-	else if (type == "abtree-brown")
-		map = new abtree_brown<K,V>(-1, NULL, 88);
-	else if (type == "bwtree-wang")
-		map = new bwtree_wang<K,V>(-1, NULL, 88);
+//	else if (type == "abtree-brown")
+//		map = new abtree_brown<K,V>(-1, NULL, 88);
+//	else if (type == "bwtree-wang")
+//		map = new bwtree_wang<K,V>(-1, NULL, 88);
 	//> COP-based
 	else if (type == "avl-int-cop")
 		map = new avl_int_cop<K,V>(-1, NULL, 88);
@@ -98,8 +99,9 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		exit(1);
 	}
 
-	if (sync_type == "cg-sync")
-		map = new cg_ds<K,V>(-1, NULL, 88, map);
+	if (sync_type == "cg-htm" || sync_type == "cg-rwlock"
+	                          || sync_type == "cg-spinlock")
+		map = new cg_ds<K,V>(-1, NULL, 88, map, sync_type);
 	else if (sync_type == "ca-locks")
 		map = new ca_locks<K,V>(-1, NULL, 88, map);
 	else if (sync_type == "rcu-htm")

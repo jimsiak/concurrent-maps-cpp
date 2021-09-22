@@ -17,6 +17,7 @@ template <typename K, typename V>
 class bst_rbt_ext : public Map<K,V> {
 public:
 	bst_rbt_ext(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -129,7 +130,7 @@ private:
 	{
 		node_t *parent, *leaf;
 		traverse(key, &parent, &leaf);
-		return (leaf != NULL);
+		return (leaf != NULL && leaf->key == key);
 	}
 
 	void insert_rebalance(const K& key, node_t *node_stack[MAX_HEIGHT],
@@ -247,30 +248,33 @@ private:
 		parent->right = new node_t(key, value, BLACK);
 		if (key < parent->key) {
 			parent->right->key = parent->key;
+			parent->right->value = parent->value;
 			parent->key = key;
 		} else {
 			parent->left->key = parent->key;
+			parent->left->value = parent->value;
 		}
+		parent->value = this->NO_VALUE;
 
 		if (!IS_RED(parent)) parent->color = RED;
 
 		return 1;
 	}
 
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *node_stack[MAX_HEIGHT];
 		int stack_top;
 	
 		traverse_with_stack(key, node_stack, &stack_top);
 		int ret = do_insert(key, value, node_stack, stack_top);
-		if (ret == 0) return 0;
+		if (ret == 0) return node_stack[stack_top]->value;
 
 		/* Consume the newly inserted RED node from the stack. */
 		stack_top--;
 
 		insert_rebalance(key, node_stack, stack_top);
-		return 1;
+		return this->NO_VALUE;
 	}
 
 	int do_delete(const K& key, node_t *node_stack[MAX_HEIGHT],
@@ -428,7 +432,7 @@ private:
 		}
 	}
 
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *node_stack[MAX_HEIGHT];
 		int stack_top;
@@ -436,13 +440,14 @@ private:
 		int succ_key;
 	
 		traverse_with_stack(key, node_stack, &stack_top);
+		const V del_val = node_stack[stack_top]->value;
 		int ret = do_delete(key, node_stack, &stack_top, &deleted_node_color);
-		if (ret == 0) return 0;
+		if (ret == 0) return this->NO_VALUE;
 	
 		if (deleted_node_color == BLACK)
 			delete_rebalance(key, node_stack, stack_top);
 	
-		return 1;
+		return del_val;
 	}
 
 	int key_in_min_path, key_in_max_path;
@@ -604,17 +609,14 @@ const V BST_RBT_EXT_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_RBT_EXT_TEMPL
 const V BST_RBT_EXT_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_RBT_EXT_TEMPL
 const std::pair<V,bool> BST_RBT_EXT_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_RBT_EXT_TEMPL

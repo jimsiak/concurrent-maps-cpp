@@ -33,6 +33,7 @@ template <typename K, typename V>
 class bst_unb_howley : public Map<K,V> {
 public:
 	bst_unb_howley(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = new node_t(0, NULL);
 	}
@@ -280,7 +281,7 @@ private:
 		return 0;
 	}
 	
-	int insert_helper(const K& k, const V& v)
+	const V insert_helper(const K& k, const V& v)
 	{
 		node_t *pred, *curr, *new_node = NULL, *old;
 		operation_t *pred_op, *curr_op;
@@ -289,9 +290,9 @@ private:
 		while(1) {
 			result = search(k, &pred, &pred_op, &curr, &curr_op, root);
 			if (result == FOUND)
-				return 0;
+				return curr->value;
 			if (do_insert(k, v, result, &new_node, old, curr, curr_op))
-				return 1;
+				return this->NO_VALUE;
 		}
 	}
 
@@ -331,7 +332,7 @@ private:
 		return 0;
 	}
 	
-	int delete_helper(const K& k)
+	const V delete_helper(const K& k)
 	{
 		node_t *pred, *curr;
 		operation_t *pred_op, *curr_op, *reloc_op = NULL;
@@ -340,9 +341,10 @@ private:
 		while(1) {
 	        res = search(k, &pred, &pred_op, &curr, &curr_op, root);
 			if (res != FOUND)
-				return 0;
+				return this->NO_VALUE;
+			const V del_val = curr->value;
 			if (do_delete(k,curr, pred, curr_op, pred_op, &reloc_op))
-				return 1;
+				return del_val;
 		}
 	}
 
@@ -497,17 +499,14 @@ const V BST_UNB_HOWLEY_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_UNB_HOWLEY_TEMPL
 const V BST_UNB_HOWLEY_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_HOWLEY_TEMPL
 const std::pair<V,bool> BST_UNB_HOWLEY_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_HOWLEY_TEMPL

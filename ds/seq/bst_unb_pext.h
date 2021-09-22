@@ -12,6 +12,7 @@ template <typename K, typename V>
 class bst_unb_pext : public Map<K,V> {
 public:
 	bst_unb_pext(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -227,7 +228,7 @@ private:
 		return (leaf != NULL && !leaf->marked);
 	}
 
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *parent, *leaf;
 	
@@ -235,44 +236,36 @@ private:
 	
 		// Empty tree case
 		if (!parent && !leaf) {
-//			root = bst_node_new(key, value);
 			root = new node_t(key, value);
-			return 1;
+			return this->NO_VALUE;
 		}
 	
 		// Key there in a marked node. Just unmark it.
 		if (leaf && leaf->marked) {
 			leaf->marked = 0;
-			return 1;
+			return this->NO_VALUE;
 		}
 	
 		// Key already in the tree.
-		if (leaf)
-			return 0;
+		if (leaf) return leaf->value;
 	
-		if (key < parent->key)
-//			parent->left = bst_node_new(key, value);
-			parent->left = new node_t(key, value);
-		else
-//			parent->right = bst_node_new(key, value);
-			parent->right = new node_t(key, value);
+		if (key < parent->key) parent->left = new node_t(key, value);
+		else                   parent->right = new node_t(key, value);
 	
-		return 1;
+		return this->NO_VALUE;
 	}
 
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *parent, *leaf;
 	
 		traverse(key, &parent, &leaf);
 	
 		// Key not in the tree (also includes empty tree case).
-		if (!leaf)
-			return 0;
+		if (!leaf) return this->NO_VALUE;
 	
 		// Key is also deleted (leaf is marked)
-		if (leaf->marked)
-			return 0;
+		if (leaf->marked) return this->NO_VALUE;
 	
 		if (!leaf->left) {
 			if (!parent) root = leaf->right;
@@ -286,7 +279,7 @@ private:
 			leaf->marked = 1;
 		}
 	
-		return 1;
+		return leaf->value;
 	}
 
 	int total_paths, total_nodes, bst_violations;
@@ -419,17 +412,14 @@ const V BST_UNB_PEXT_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_UNB_PEXT_TEMPL
 const V BST_UNB_PEXT_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_PEXT_TEMPL
 const std::pair<V,bool> BST_UNB_PEXT_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_PEXT_TEMPL

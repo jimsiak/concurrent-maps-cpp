@@ -14,12 +14,19 @@
 
 template <typename K, typename V>
 class Map {
+protected:
+	//> INF_KEY, INF_KEY-1 and INF_KEY-2 should not be used in map operations.
+	const K INF_KEY;
+	const V NO_VALUE;
+
 public:
 	/**
 	 * The interface necessary for a Map data structure
 	 **/
 
 	Map() {};
+	Map(const K& _INF_KEY, const V& _NO_VALUE)
+	    : INF_KEY(_INF_KEY), NO_VALUE(_NO_VALUE) {};
 	~Map() {};
 
 	//> Thread initialize/finalize functions. Called by each thread that will

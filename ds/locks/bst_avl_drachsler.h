@@ -39,6 +39,7 @@ template <typename K, typename V>
 class bst_avl_drachsler: public Map<K,V> {
 public:
 	bst_avl_drachsler(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		node_t *parent = new node_t(MIN_KEY_DRACHSLER, 0);
 		node_t *n = new node_t(MAX_KEY_DRACHSLER, 0);

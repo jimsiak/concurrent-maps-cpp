@@ -15,6 +15,7 @@ template <typename K, typename V>
 class bst_unb_ext_hohlocks : public Map<K,V> {
 public:
 	bst_unb_ext_hohlocks(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 		INIT_LOCK(&root_lock);

@@ -18,6 +18,7 @@ template <typename K, typename V>
 class avl_ext_cop : public Map<K,V> {
 public:
 	avl_ext_cop(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 		INIT_LOCK(&lock);
@@ -320,7 +321,7 @@ private:
 		}
 	}
 	
-	int do_insert(node_t *new_nodes[2], node_t *leaf)
+	const V do_insert(node_t *new_nodes[2], node_t *leaf)
 	{
 		node_t *prev = NULL, *succ = NULL;
 		int key = new_nodes[0]->key;
@@ -330,12 +331,12 @@ private:
 			new_nodes[1]->prev = new_nodes[1]->succ = NULL;
 			new_nodes[1]->parent = NULL;
 			root = new_nodes[1];
-			return 1;
+			return this->NO_VALUE;
 		}
 	
 		node_t *parent = leaf->parent;
 	
-		if (leaf->key == key) return 0;
+		if (leaf->key == key) return leaf->value;
 	
 		//> Create new internal node and its new external child
 		node_t *new_internal = new_nodes[0];
@@ -383,17 +384,18 @@ private:
 		else                         parent->right = new_internal;
 	
 		insert_fixup(key, new_internal);
-		return 1;
+		return this->NO_VALUE;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *leaf;
 		tm_begin_ret_t status;
-		int retries = -1, ret = 0;
+		int retries = -1;
+		V ret;
 	
 		node_t *new_nodes[2];
-		new_nodes[0] = new node_t(key, NULL);  // Internal
+		new_nodes[0] = new node_t(key, this->NO_VALUE);  // Internal
 		new_nodes[1] = new node_t(key, value); // External
 	
 	try_from_scratch:
@@ -501,20 +503,22 @@ private:
 		}
 	}
 	
-	int do_delete(const K& key, node_t *leaf)
+	const V do_delete(const K& key, node_t *leaf)
 	{
 		//> Empty tree case
-		if (!leaf) return 0;
+		if (!leaf) return this->NO_VALUE;
 	
 		//> Key not in the tree
-		if (leaf->key != key) return 0;
+		if (leaf->key != key) return this->NO_VALUE;
 	
+		const V del_val = leaf->value;
+
 		//> Single node tree case
 		node_t *parent = leaf->parent;
 		if (!parent) {
 			leaf->live = 0;
 			root = NULL;
-			return 1;
+			return del_val;
 		}
 	
 		//> Fix prev and succ pointers of `parent` siblings
@@ -544,14 +548,15 @@ private:
 	
 		delete_fixup(key, gparent);
 	
-		return 1;
+		return del_val;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *leaf;
 		tm_begin_ret_t status;
-		int retries = -1, ret = 0;
+		int retries = -1;
+		V ret;
 	
 	try_from_scratch:
 	
@@ -718,17 +723,14 @@ const V BST_AVL_EXT_COP_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_AVL_EXT_COP_TEMPL
 const V BST_AVL_EXT_COP_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_EXT_COP_TEMPL
 const std::pair<V,bool> BST_AVL_EXT_COP_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_EXT_COP_TEMPL

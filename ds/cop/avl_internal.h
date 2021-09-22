@@ -15,6 +15,7 @@ template <typename K, typename V>
 class avl_int_cop : public Map<K,V> {
 public:
 	avl_int_cop(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 		INIT_LOCK(&lock);
@@ -280,18 +281,18 @@ private:
 		}
 	}
 	
-	int do_insert(node_t *new_node, node_t *place)
+	const V do_insert(node_t *new_node, node_t *place)
 	{
 		node_t *prev = NULL, *succ = NULL;
 	
 		if (!place) {
 			root = new_node;
 			new_node->live = 1;
-			return 1;
+			return this->NO_VALUE;
 		}
 	
 		if (place->key == new_node->key)
-			return 0;
+			return place->value;
 	
 		/* Place the new node in its position. */
 		new_node->parent = place;
@@ -312,14 +313,15 @@ private:
 		if (succ) succ->prev = new_node;
 	
 		insert_fixup(new_node->key, new_node->parent);
-		return 1;
+		return this->NO_VALUE;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *place;
 		tm_begin_ret_t status;
-		int retries = -1, ret = 0;
+		int retries = -1;
+		V ret;
 	
 		node_t *new_node = new node_t(key, value);
 	
@@ -447,12 +449,13 @@ private:
 		return ret;
 	}
 	
-	int do_delete(const K& key, node_t *z)
+	const V do_delete(const K& key, node_t *z)
 	{
 		node_t *x, *y;
+		V del_val;
 	
 		if (!z || z->key != key)
-			return 0;
+			return this->NO_VALUE;
 	
 		/**
 		 * 2 cases for z:
@@ -489,17 +492,20 @@ private:
 		if (prev) prev->succ = succ;
 		if (succ) succ->prev = prev;
 		y->live = 0;
+
+		del_val = y->value;
 	
 		delete_fixup(y->key, y_parent);
 	
-		return 1;
+		return del_val;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *place;
 		tm_begin_ret_t status;
-		int retries = -1, ret = 0;
+		int retries = -1;
+		V ret;
 	
 	try_from_scratch:
 	
@@ -735,17 +741,14 @@ const V BST_AVL_INT_COP_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_AVL_INT_COP_TEMPL
 const V BST_AVL_INT_COP_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_INT_COP_TEMPL
 const std::pair<V,bool> BST_AVL_INT_COP_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_INT_COP_TEMPL

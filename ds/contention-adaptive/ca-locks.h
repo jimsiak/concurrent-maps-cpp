@@ -569,6 +569,7 @@ public:
 	//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 	ca_locks(const K _NO_KEY, const V _NO_VALUE, const int numProcesses, Map<K,V> *seq_ds)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		pthread_spin_init(&lock, PTHREAD_PROCESS_SHARED);
 		root = (node_t *)new base_node_t(-1, seq_ds);

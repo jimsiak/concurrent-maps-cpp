@@ -29,6 +29,7 @@ template <typename K, typename V>
 class bst_unb_ellen : public Map<K,V> {
 public:
 	bst_unb_ellen(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = new node_t(ELLEN_INF2, 0, false);
 		root->left = new node_t(ELLEN_INF1, 0, true);
@@ -235,7 +236,7 @@ private:
 			(*new_sibling)->value = search_result->l->value;
 			(*new_sibling)->leaf = true;
 			(*new_internal)->key = MAX(key, search_result->l->key);
-			(*new_internal)->value = 0;
+			(*new_internal)->value = this->NO_VALUE;
 			(*new_internal)->leaf = false;
 	
 			if ((*new_node)->key < (*new_sibling)->key) {
@@ -258,7 +259,7 @@ private:
 		return 0;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *new_internal = NULL, *new_sibling = NULL, *new_node = NULL;
 		search_result_t *search_result;
@@ -266,19 +267,18 @@ private:
 		while(1) {
 			search_result = search(key);
 			if (search_result->l->key == key)
-				return 0;
+				return search_result->l->value;
 			if (do_insert(key, value, &new_node, &new_sibling, &new_internal, search_result))
-				return 1;
+				return this->NO_VALUE;
 		}
 	}
 
-	int do_delete(search_result_t *search_result)
+	int do_delete(search_result_t *search_result, V& del_val)
 	{
 		update_t result;
-		V found_value;
 		info_t *op;
 	
-		found_value = search_result->l->value;
+		del_val = search_result->l->value;
 		if (GETFLAG(search_result->gpupdate) != STATE_CLEAN) {
 			help(search_result->gpupdate);
 		} else if (GETFLAG(search_result->pupdate) != STATE_CLEAN){
@@ -297,13 +297,14 @@ private:
 		return 0;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		search_result_t *search_result;
+		V del_val;
 		while (1) {
 			search_result = search(key); 
-			if (search_result->l->key != key) return 0;
-			if (do_delete(search_result))     return 1;
+			if (search_result->l->key != key)      return this->NO_VALUE;
+			if (do_delete(search_result, del_val)) return del_val;
 		}
 	}
 
@@ -433,17 +434,14 @@ const V BST_UNB_ELLEN_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_UNB_ELLEN_TEMPL
 const V BST_UNB_ELLEN_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_ELLEN_TEMPL
 const std::pair<V,bool> BST_UNB_ELLEN_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_ELLEN_TEMPL

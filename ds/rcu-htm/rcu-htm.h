@@ -15,7 +15,7 @@ class rcu_htm : public Map<K,V> {
 public:
 	rcu_htm(const K _NO_KEY, const V _NO_VALUE, const int numProcesses, Map<K,V> *seq_ds,
 	        const int num_retries = 10)
-	   : TX_NUM_RETRIES(num_retries)
+	   : Map<K,V>(_NO_KEY, _NO_VALUE), TX_NUM_RETRIES(num_retries)
 	{
 		this->seq_ds = seq_ds;
 		pthread_spin_init(&updaters_lock, PTHREAD_PROCESS_SHARED);

@@ -31,10 +31,9 @@ __thread void* seek_record_threadlocal; //FIXME is this OK to be here??
 
 template <typename K, typename V>
 class bst_unb_natarajan: public Map<K,V> {
-private:
-	const V NO_VALUE = NULL;
 public:
 	bst_unb_natarajan(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		node_t *r, *s, *inf0, *inf1, *inf2;
 		r = new node_t(INF2, NULL);
@@ -229,7 +228,7 @@ private:
 			if (seek_record->leaf->key == key)
 	            return seek_record->leaf->value;
 			if (do_insert(key, val, &created, &new_internal, &new_node))
-				return NO_VALUE;
+				return this->NO_VALUE;
 		}
 	}
 
@@ -279,7 +278,7 @@ private:
 			seek(key, root);
 			ret = do_remove(key, &injecting, &leaf);
 			if (ret == 1) return leaf->value;
-			else if (ret == 0) return NO_VALUE;
+			else if (ret == 0) return this->NO_VALUE;
 	    }
 	}
 
@@ -431,7 +430,7 @@ BST_UNB_NATARAJAN_TEMPL
 const std::pair<V,bool> BST_UNB_NATARAJAN_FUNCT::remove(const int tid, const K& key)
 {
 	V ret = delete_helper(key);
-	return std::pair<V,bool>(ret, (ret != NO_VALUE));
+	return std::pair<V,bool>(ret, (ret != this->NO_VALUE));
 }
 
 BST_UNB_NATARAJAN_TEMPL

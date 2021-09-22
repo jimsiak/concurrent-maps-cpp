@@ -48,6 +48,7 @@ template <typename K, typename V>
 class bst_avl_bronson : public Map<K,V> {
 public:
 	bst_avl_bronson(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = new node_t(99999999, 0, 0, 0, NULL);
 	}

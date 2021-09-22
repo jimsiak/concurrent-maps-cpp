@@ -18,6 +18,7 @@ template <typename K, typename V>
 class bst_avl_cf : public Map<K,V> {
 public:
 	bst_avl_cf(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = new node_t(0, NULL);
 		spawn_maintenance_thread();

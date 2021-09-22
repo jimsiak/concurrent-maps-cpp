@@ -12,6 +12,7 @@ template <typename K, typename V>
 class bst_unb_ext : public Map<K,V> {
 public:
 	bst_unb_ext(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -198,8 +199,8 @@ private:
 	inline void find_successor(node_t *node, node_t **parent, node_t **leaf);
 
 	int lookup_helper(const K& key);
-	int insert_helper(const K& key, const V& value);
-	int delete_helper(const K& key);
+	const V insert_helper(const K& key, const V& value);
+	const V delete_helper(const K& key);
 	int update_helper(const K& key, const V& value);
 
 	int validate_helper();
@@ -247,17 +248,14 @@ const V BST_UNB_EXT_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_UNB_EXT_TEMPL
 const V BST_UNB_EXT_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_EXT_TEMPL
 const std::pair<V,bool> BST_UNB_EXT_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_EXT_TEMPL
@@ -298,7 +296,7 @@ int BST_UNB_EXT_FUNCT::lookup_helper(const K& key)
 }
 
 BST_UNB_EXT_TEMPL
-int BST_UNB_EXT_FUNCT::insert_helper(const K& key, const V& value)
+const V BST_UNB_EXT_FUNCT::insert_helper(const K& key, const V& value)
 {
 	node_t *gparent, *parent, *leaf;
 
@@ -306,36 +304,32 @@ int BST_UNB_EXT_FUNCT::insert_helper(const K& key, const V& value)
 
 	// Empty tree case
 	if (!leaf) {
-//		root = bst_node_new(key, value);
 		root = new node_t(key, value);
-		return 1;
+		return this->NO_VALUE;
 	}
 
 	// Key already in the tree.
 	if (leaf->key == key)
-		return 0;
+		return leaf->value;
 
 	// Create new internal and leaf nodes.
-//	bst_node_t *new_internal = bst_node_new(key, NULL);
-	node_t *new_internal = new node_t(key, NULL);
+	node_t *new_internal = new node_t(key, this->NO_VALUE);
 	if (key <= leaf->key) {
-//		new_internal->left = bst_node_new(key, value);
 		new_internal->left = new node_t(key, value);
 		new_internal->right = leaf;
 	} else {
 		new_internal->left = leaf;
-//		new_internal->right = bst_node_new(key, value);
 		new_internal->right = new node_t(key, value);
 		new_internal->key = leaf->key;
 	}
 	if (!parent)                 root = new_internal;
 	else if (key <= parent->key) parent->left = new_internal;
 	else                         parent->right = new_internal;
-	return 1;
+	return this->NO_VALUE;
 }
 
 BST_UNB_EXT_TEMPL
-int BST_UNB_EXT_FUNCT::delete_helper(const K& key)
+const V BST_UNB_EXT_FUNCT::delete_helper(const K& key)
 {
 
 	node_t *gparent, *parent, *leaf;
@@ -344,18 +338,18 @@ int BST_UNB_EXT_FUNCT::delete_helper(const K& key)
 
 	// Empty tree or key not in the tree.
 	if (!leaf || leaf->key != key)
-		return 0;
+		return this->NO_VALUE;
 
 	// Only one node in the tree.
 	if (!parent) {
 		root = NULL;
-		return 1;
+		return leaf->value;
 	}
 	node_t *sibling = (key <= parent->key) ? parent->right : parent->left;
 	if (!gparent)                 root = sibling;
 	else if (key <= gparent->key) gparent->left = sibling;
 	else                          gparent->right = sibling;
-	return 1;
+	return leaf->value;
 }
 
 BST_UNB_EXT_TEMPL

@@ -19,6 +19,7 @@ template <typename K, typename V>
 class abtree : public Map<K,V> {
 public:
 	abtree(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
+	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
 		root = NULL;
 	}
@@ -420,9 +421,9 @@ private:
 		return rnode;
 	}
 
-	int do_insert(const K& key, const V& val,
-	              node_t **node_stack, int *node_stack_indexes,
-	              int *node_stack_top, int *should_rebalance)
+	void do_insert(const K& key, const V& val,
+	               node_t **node_stack, int *node_stack_indexes,
+	               int *node_stack_top, int *should_rebalance)
 	{
 		node_t *n;
 		int index, pindex;
@@ -434,7 +435,7 @@ private:
 			n = new node_t(1);
 			n->insert_index(0, key, (void*)val);
 			root = n;
-			return 1;
+			return;
 		}
 
 		n = node_stack[*node_stack_top];
@@ -443,7 +444,7 @@ private:
 		//> Case of a not full leaf.
 		if (n->no_keys < ABTREE_DEGREE_MAX) {
 			n->insert_index(index, key, (void*)val);
-			return 1;
+			return;
 		}
 
 		//> Case of a not full leaf.
@@ -469,14 +470,14 @@ private:
 		node_stack_indexes[*node_stack_top] = pindex;
 		node_stack[++(*node_stack_top)] = (node_t*)parent_new->children[pindex];
 		*should_rebalance = 1;
-		return 1;
+		return;
 	}
 
-	int insert_helper(const K& key, const V& val)
+	const V insert_helper(const K& key, const V& val)
 	{
 		node_t *node_stack[MAX_HEIGHT];
 		int node_stack_indexes[MAX_HEIGHT], node_stack_top = -1;
-		int should_rebalance, ret;
+		int should_rebalance;
 
 		//> Route to the appropriate leaf.
 		traverse_with_stack(key, node_stack, node_stack_indexes, &node_stack_top);
@@ -484,18 +485,18 @@ private:
 		node_t *n = node_stack[node_stack_top];
 		//> Key already in the tree.
 		if (node_stack_top >= 0 && index < ABTREE_DEGREE_MAX && key == n->keys[index])
-			return 0;
+			return (V)n->children[index+1];
 		//> Key not in the tree.
-		ret = do_insert(key, val, node_stack, node_stack_indexes,
-		                &node_stack_top, &should_rebalance);
+		do_insert(key, val, node_stack, node_stack_indexes,
+		          &node_stack_top, &should_rebalance);
 		while (should_rebalance)
 			rebalance(node_stack, node_stack_indexes, node_stack_top, &should_rebalance);
-		return ret;
+		return this->NO_VALUE;
 	}
 
-	int do_delete(const K& key, node_t **node_stack,
-	              int *node_stack_indexes, int node_stack_top,
-	              int *should_rebalance)
+	void do_delete(const K& key, node_t **node_stack,
+	               int *node_stack_indexes, int node_stack_top,
+	               int *should_rebalance)
 	{
 		node_t *n = node_stack[node_stack_top];
 		int index = node_stack_indexes[node_stack_top];
@@ -506,31 +507,31 @@ private:
 
 		cur->delete_index(cur_index);
 		*should_rebalance = cur->no_keys < ABTREE_DEGREE_MIN;
-		return 1;
 	}
 
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		int index;
 		node_t *n;
 		node_t *node_stack[MAX_HEIGHT];
 		int node_stack_indexes[MAX_HEIGHT];
 		int node_stack_top = -1;
-		int should_rebalance, ret;
+		int should_rebalance;
 
 		//> Route to the appropriate leaf.
 		traverse_with_stack(key, node_stack, node_stack_indexes, &node_stack_top);
 
 		//> Empty tree case.
-		if (node_stack_top == -1) return 0;
+		if (node_stack_top == -1) return this->NO_VALUE;
 		n = node_stack[node_stack_top];
 		index = node_stack_indexes[node_stack_top];
 		//> Key not in the tree.
 		if (index >= n->no_keys || key != n->keys[index])
-			return 0;
+			return this->NO_VALUE;
 		//> Key in the tree.
-		ret = do_delete(key, node_stack, node_stack_indexes,
-		                node_stack_top, &should_rebalance);
+		V ret = n->children[index+1];
+		do_delete(key, node_stack, node_stack_indexes,
+		          node_stack_top, &should_rebalance);
 		while (should_rebalance)
 			rebalance(node_stack, node_stack_indexes, node_stack_top, &should_rebalance);
 		return ret;
@@ -1175,17 +1176,14 @@ const V ABTREE_FUNCT::insert(const int tid, const K& key, const V& val)
 ABTREE_TEMPL
 const V ABTREE_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 ABTREE_TEMPL
 const std::pair<V,bool> ABTREE_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, (ret != this->NO_VALUE));
 }
 
 ABTREE_TEMPL
