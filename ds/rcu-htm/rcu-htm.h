@@ -118,30 +118,6 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
-
-			//> If its is an (a-b)-tree we should also rebalance here.
-			if (seq_ds->is_abtree()) {
-				if (!installed) continue;
-
-				int should_rebalance = 1;
-				while (should_rebalance) {
-					ht_reset(tdata->ht);
-					seq_ds->traverse_for_rebalance(key, &should_rebalance,
-					                               node_stack, node_stack_indexes,
-					                               &stack_top);
-					if (!should_rebalance) break;
-					connection_point = seq_ds->rebalance_with_copy(key,
-					                           node_stack, node_stack_indexes,
-					                           stack_top, &should_rebalance, &tree_cp_root,
-					                           &connection_point_stack_index);
-					bool installed = validate_and_install_copy(connection_point, tree_cp_root,
-				                                           node_stack, node_stack_indexes,
-				                                           stack_top,
-				                                           connection_point_stack_index);
-					if (!installed) break;
-				}
-			}
-
 			if (installed) return 1;
 		}
 
@@ -191,30 +167,6 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
-
-			//> If its is an (a-b)-tree we should also rebalance here.
-			if (seq_ds->is_abtree()) {
-				if (!installed) continue;
-
-				int should_rebalance = 1;
-				while (should_rebalance) {
-					ht_reset(tdata->ht);
-					seq_ds->traverse_for_rebalance(key, &should_rebalance,
-					                               node_stack, node_stack_indexes,
-					                               &stack_top);
-					if (!should_rebalance) break;
-					connection_point = seq_ds->rebalance_with_copy(key,
-					                           node_stack, node_stack_indexes,
-					                           stack_top, &should_rebalance, &tree_cp_root,
-					                           &connection_point_stack_index);
-					bool installed = validate_and_install_copy(connection_point, tree_cp_root,
-				                                           node_stack, node_stack_indexes,
-				                                           stack_top,
-				                                           connection_point_stack_index);
-					if (!installed) break;
-				}
-			}
-
 			if (installed) return 1;
 		}
 
@@ -239,6 +191,56 @@ private:
 		return 1;
 	}
 
+	void rebalance_helper(const K& key)
+	{
+		void *node_stack[MAX_STACK_LEN];
+		void *connection_point, *tree_cp_root;
+		int node_stack_indexes[MAX_STACK_LEN], stack_top, index;
+		int retries = -1;
+		int connection_point_stack_index;
+		int should_rebalance = 1;
+
+		AGAIN:
+		while (should_rebalance) {
+			//> First try with the RCU-HTM way ...
+			while (++retries < TX_NUM_RETRIES) {
+				ht_reset(tdata->ht);
+				seq_ds->traverse_for_rebalance(key, &should_rebalance,
+				                               node_stack, node_stack_indexes,
+				                               &stack_top);
+				if (!should_rebalance) goto AGAIN;
+				connection_point = seq_ds->rebalance_with_copy(key,
+				                           node_stack, node_stack_indexes,
+				                           stack_top, &should_rebalance, &tree_cp_root,
+				                           &connection_point_stack_index);
+				bool installed = validate_and_install_copy(connection_point, tree_cp_root,
+			                                           node_stack, node_stack_indexes,
+			                                           stack_top,
+			                                           connection_point_stack_index);
+				if (installed) goto AGAIN;
+			}
+
+			//> ...otherwise fallback to the coarse-grained RCU
+			ht_reset(tdata->ht);
+			tdata->lacqs++;
+			pthread_spin_lock(&updaters_lock);
+			seq_ds->traverse_for_rebalance(key, &should_rebalance,
+			                               node_stack, node_stack_indexes,
+			                               &stack_top);
+			if (!should_rebalance) {
+				pthread_spin_unlock(&updaters_lock);
+				break;
+			}
+			connection_point = seq_ds->rebalance_with_copy(key,
+			                                  node_stack, node_stack_indexes, stack_top,
+			                                  &should_rebalance, &tree_cp_root,
+			                                  &connection_point_stack_index);
+			seq_ds->install_copy(connection_point, tree_cp_root,
+			                     node_stack_indexes,
+			                     connection_point_stack_index);
+			pthread_spin_unlock(&updaters_lock);
+		}
+	}
 };
 
 #define RCU_HTM_TEMPL template<typename K, typename V>
@@ -273,6 +275,9 @@ RCU_HTM_TEMPL
 const V RCU_HTM_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
 	int ret = insert_helper(key, val);
+
+	if (seq_ds->is_abtree() && ret == 1) rebalance_helper(key);
+
 	if (ret == 1) return NULL;
 	else return (void *)1;
 }
@@ -281,6 +286,9 @@ RCU_HTM_TEMPL
 const std::pair<V,bool> RCU_HTM_FUNCT::remove(const int tid, const K& key)
 {
 	int ret = delete_helper(key);
+
+	if (seq_ds->is_abtree() && ret == 1) rebalance_helper(key);
+
 	if (ret == 0) return std::pair<V,bool>(NULL, false);
 	else return std::pair<V,bool>((void*)1, true);
 }

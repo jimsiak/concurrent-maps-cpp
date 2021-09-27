@@ -47,13 +47,14 @@ public:
 private:
 
 	struct node_t {
-		bool leaf, marked, tag;
-
+		bool leaf, tag;
 		int no_keys;
+
 		K keys[ABTREE_DEGREE_MAX];
 		__attribute__((aligned(16))) void *children[ABTREE_DEGREE_MAX + 1];
 
 		node_t (bool leaf) {
+			this->tag = 0;
 			this->no_keys = 0;
 			this->leaf = leaf;
 		}
@@ -67,9 +68,7 @@ private:
 
 		node_t *get_child(const K& key)
 		{
-			int index = search(key);
-			if (index < no_keys && keys[index] == key) index++;
-			return children[index];
+			return children[get_index(key)];
 		}
 
 		void delete_index(int index)
@@ -105,7 +104,6 @@ private:
 			}
 			keys[index] = key;
 			children[index+1] = ptr;
-
 			no_keys++;
 		}
 
@@ -378,7 +376,13 @@ private:
 			sindex = pindex ? pindex - 1 : pindex + 1;
 			s = (node_t*)p->children[sindex];
 			if (s->tag) {
-				//> FIXME
+				if (p->no_keys + s->no_keys <= ABTREE_DEGREE_MAX) {
+					join_parent_with_child(p, sindex, s);
+				} else {
+					split_parent_and_child(p, sindex, s);
+					p->tag = (gp != NULL); //> Tag parent if not root
+				}
+				*should_rebalance = 1; //> We still have our node to rebalance
 			} else {
 				if (l->no_keys + s->no_keys + 1 <= ABTREE_DEGREE_MAX) {
 					//> Join l and s
@@ -580,10 +584,10 @@ private:
 
 		if (!root || root->leaf) return;
 
-		for (i=0; i < root->no_keys; i++)
-			print_rec((node_t *)root->children[i], level + 1);
-		if (root->no_keys > 0)
-			print_rec((node_t *)root->children[root->no_keys], level + 1);
+		for (i=0; i <= root->no_keys; i++)
+			if (root->children[i]) print_rec((node_t *)root->children[i], level + 1);
+//		if (root->no_keys > 0)
+//			print_rec((node_t *)root->children[root->no_keys], level + 1);
 	}
 
 	void print_helper()
@@ -599,7 +603,7 @@ private:
 	int bst_violations, total_nodes, total_keys, leaf_keys;
 	int null_children_violations;
 	int not_full_nodes;
-	int leaves_level;
+	int leaves_level, leaf_level_max, leaf_level_min;
 	int leaves_at_same_level;
 
 	/**
@@ -641,6 +645,8 @@ private:
 		node_validate(root, min, max);
 
 		if (root->leaf) {
+			if (level > leaf_level_max) leaf_level_max = level;
+			if (level < leaf_level_min) leaf_level_min = level;
 			if (leaves_level == -1) leaves_level = level;
 			else if (level != leaves_level) leaves_at_same_level = 0;
 			leaf_keys += root->no_keys;
@@ -663,6 +669,7 @@ private:
 		null_children_violations = 0;
 		not_full_nodes = 0;
 		leaves_level = -1;
+		leaf_level_max = -1; leaf_level_min = 99999;
 		leaves_at_same_level = 1;
 
 		validate_rec(root, 0, ABTREE_MAX_KEY, 0);
@@ -682,8 +689,9 @@ private:
 		       (null_children_violations == 0) ? "No [OK]" : "Yes [ERROR]");
 		printf("  |-- Not-full Nodes: %s\n",
 		       (not_full_nodes == 0) ? "No [OK]" : "Yes [ERROR]");
-		printf("  |-- Leaves at same level: %s [ Level %d ]\n",
-		       (leaves_at_same_level == 1) ? "Yes [OK]" : "No [ERROR]", leaves_level);
+		printf("  |-- Leaves at same level: %s [ Level %d ( min %d / max %d )]\n",
+		       (leaves_at_same_level == 1) ? "Yes [OK]" : "No [ERROR]", leaves_level,
+		       leaf_level_min, leaf_level_max);
 		printf("  Tree size: %8d\n", total_nodes);
 		printf("  Number of keys: %8d total / %8d in leaves\n", total_keys, leaf_keys);
 		printf("\n");
@@ -770,6 +778,7 @@ public:
 
 		//> Empty tree case.
 		if (stack_top == -1) {
+			ht_insert(tdata->ht, &root, NULL);
 			n_cp = new node_t(1);
 			n_cp->insert_index(0, key, value);
 			*connpoint_stack_index = -1;
@@ -778,6 +787,8 @@ public:
 		}
 
 		n_cp = node_new_copy(node_stack[stack_top]);
+		for (int i=0; i <= node_stack[stack_top]->no_keys; i++)
+			ht_insert(tdata->ht, &node_stack[stack_top]->children[i], n_cp->children[i]);
 		index = stack_indexes[stack_top];
 		if (n_cp->no_keys < ABTREE_DEGREE_MAX) {
 			//> Case of a not full leaf.
@@ -805,6 +816,8 @@ public:
 		node_t **node_stack = (node_t **)stack;
 		int stack_top = *_stack_top;
 		node_t *n_cp = node_new_copy(node_stack[stack_top]);
+		for (int i=0; i <= node_stack[stack_top]->no_keys; i++)
+			ht_insert(tdata->ht, &node_stack[stack_top]->children[i], n_cp->children[i]);
 		int index = stack_indexes[stack_top];
 		int should_rebalance;
 
@@ -828,11 +841,11 @@ public:
 		*stack_top = -1;
 		*should_rebalance = 0;
 
-		if (root->leaf) return;
-
 		gp = NULL;
 		gpindex = -1;
 		p = root;
+		ht_insert(tdata->ht, &root, p);
+		if (p->leaf) return;
 		pindex = p->get_index(key);
 		node_stack[++(*stack_top)] = p;
 		stack_indexes[*stack_top] = pindex;
@@ -847,6 +860,7 @@ public:
 			l = (node_t *)p->children[pindex];
 		}
 		node_stack[++(*stack_top)] = l;
+		stack_indexes[*stack_top] = l->get_index(key);
 
 		//> No violation to fix
 		if (!l->tag && l->no_keys >= ABTREE_DEGREE_MIN) return;
@@ -869,7 +883,7 @@ public:
 	
 		//> copy l keys and children then
 		for (int i=0; i < l->no_keys; i++) {
-			p_cp->keys[k1++], l->keys[i];
+			p_cp->keys[k1++] = l->keys[i];
 			p_cp->children[k2++] = l->children[i];
 			ht_insert(tdata->ht, &l->children[i], p_cp->children[k2-1]);
 		}
@@ -1015,7 +1029,7 @@ public:
 	                                            int lindex, int sindex)
 	{
 		K keys[ABTREE_DEGREE_MAX * 2];
-		void *ptrs[ABTREE_DEGREE_MAX * 2 + 1];
+		void *ptrs[ABTREE_DEGREE_MAX * 2 + 2];
 		int left_index, right_index;
 		node_t *left, *right;
 		int i, k1 = 0, k2 = 0, total_keys, left_keys, right_keys;
@@ -1078,7 +1092,7 @@ public:
 		//> Fix parent
 		node_t *newp = new node_t(0);
 		for (i=0; i < p->no_keys; i++) {
-			newp->keys[i], p->keys[i];
+			newp->keys[i] = p->keys[i];
 			newp->children[i] = p->children[i];
 			ht_insert(tdata->ht, &p->children[i], newp->children[i]);
 		}
@@ -1109,6 +1123,13 @@ public:
 		pindex = stack_indexes[stack_top-1];
 		l  = node_stack[stack_top];
 
+		if (p == root && p->no_keys == 0) {
+			ht_insert(tdata->ht, &root->children[0], l);
+			*privcopy = (void *)l;
+			*connpoint_stack_index = -1;
+			return NULL;
+		}
+
 		if (l->tag) {
 			if (p->no_keys + l->no_keys <= ABTREE_DEGREE_MAX) {
 				//> Join l with its parent
@@ -1124,7 +1145,13 @@ public:
 			s = (node_t *)p->children[sindex];
 			ht_insert(tdata->ht, &p->children[sindex], s);
 			if (s->tag) {
-				//> FIXME
+				if (p->no_keys + s->no_keys <= ABTREE_DEGREE_MAX) {
+					*privcopy = (void *)join_parent_with_child_with_copy(p, sindex, s);
+				} else {
+					*privcopy = (void *)split_parent_and_child_with_copy(p, sindex, s);
+					(*(node_t **)privcopy)->tag = (gp != NULL); //> Tag parent if not root
+				}
+				*should_rebalance = 1; //> We still have our node to rebalance
 			} else {
 				if (l->no_keys + s->no_keys + 1 <= ABTREE_DEGREE_MAX) {
 					//> Join l and s
