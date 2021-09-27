@@ -454,8 +454,7 @@ private:
 		node_t *x, *y;
 		V del_val;
 	
-		if (!z || z->key != key)
-			return this->NO_VALUE;
+		if (!z || z->key != key) return this->NO_VALUE;
 	
 		/**
 		 * 2 cases for z:
@@ -463,25 +462,21 @@ private:
 		 *   - two children: the leftmost node of z's 
 		 *     right subtree is to be removed.
 		 **/
-		if (!z->left || !z->right)
-			y = z;
-		else
-			y = minimum_node(z->right);
+		if (!z->left || !z->right) y = z;
+		else                       y = minimum_node(z->right);
 	
 		x = y->left;
-		if (!x)
-			x = y->right;
+		if (!x) x = y->right;
 	
 		/* replace y with x */
 		node_t *y_parent = y->parent;
 		if (x) x->parent = y_parent;
-		if (!y_parent)
-			root = x;
-		else if (y == y_parent->left)
-			y->parent->left = x;
-		else
-			y->parent->right = x;
+		if (!y_parent)                root = x;
+		else if (y == y_parent->left) y->parent->left = x;
+		else                          y->parent->right = x;
 	
+		del_val = z->value;
+
 		if (y != z) {
 			z->key = y->key;
 			z->value = y->value;
@@ -493,8 +488,6 @@ private:
 		if (succ) succ->prev = prev;
 		y->live = 0;
 
-		del_val = y->value;
-	
 		delete_fixup(y->key, y_parent);
 	
 		return del_val;
