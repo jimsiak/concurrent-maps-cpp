@@ -278,7 +278,6 @@ private:
 
 	class IdealBuilder {
 	private:
-		static const int UPPER_LIMIT_DEPTH = 16;
 		size_t initNumKeys;
 		ist_brown *ist;
 		size_t depth;
@@ -286,82 +285,80 @@ private:
 		size_t pairsAdded;
 		casword_t tree;
 		
-		Node * build(const int tid, KVPair *pset, int psetSize, const size_t currDepth,
-		             casword_t volatile *constructingSubtree, bool parallelizeWithOMP = false) {
+		Node *build(const int tid, KVPair *pset, int psetSize, const size_t currDepth,
+		            casword_t volatile *constructingSubtree, bool parallelizeWithOMP = false) {
+			// bail early if tree was already constructed by someone else
 			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
-				// bail early if tree was already constructed by someone else
 				return NODE_TO_CASWORD(NULL); 
 
-			 if (psetSize <= MAX_ACCEPTABLE_LEAF_SIZE) {
+			//> All key-value pairs can fit in a leaf
+			if (psetSize <= MAX_ACCEPTABLE_LEAF_SIZE)
 				return ist->createLeaf(tid, pset, psetSize);
-			 } else {
-				double numChildrenD = std::sqrt((double) psetSize);
-				size_t numChildren = (size_t) std::ceil(numChildrenD);
-				size_t childSize = psetSize / (size_t) numChildren;
-				size_t remainder = psetSize % numChildren;
-				// remainder is the number of children with childSize+1 pair subsets
-				// (the other (numChildren - remainder) children have childSize pair subsets)
 
-				#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
-				Node *node = NULL;
-				if (currDepth <= 1)
-					node = ist->createMultiCounterNode(tid, numChildren);
-				else
-					node = ist->createNode(tid, numChildren);
-				#else
-				auto node = ist->createNode(tid, numChildren);
-				#endif
-				node->degree = numChildren;
-				node->initSize = psetSize;
+			//> remainder is the number of children with childSize+1 pair subsets
+			//> (the other (numChildren - remainder) children have childSize pair subsets)
+			double numChildrenD = std::sqrt((double) psetSize);
+			size_t numChildren = (size_t) std::ceil(numChildrenD);
+			size_t childSize = psetSize / (size_t) numChildren;
+			size_t remainder = psetSize % numChildren;
 
-				if (parallelizeWithOMP) {
-					#pragma omp parallel
-					{
-						#ifdef _OPENMP
-						auto sub_thread_id = omp_get_thread_num();
-						#else
-						auto sub_thread_id = tid; // it will just be this main thread
-						#endif
-						ist->initThread(sub_thread_id);
-						
-						#pragma omp for
-						for (size_t i=0;i<numChildren;++i) {
-							int sz = childSize + (i < remainder);
-							KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
-							auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
-							
-							*node->ptrAddr(i) = NODE_TO_CASWORD(child);
-							if (i > 0) node->key(i-1) = childSet[0].k;
-						}
-					}
-				} else {
-					KVPair *childSet = pset;
+			Node *node = NULL;
+			#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
+			if (currDepth <= 1) node = ist->createMultiCounterNode(tid, numChildren);
+			else                node = ist->createNode(tid, numChildren);
+			#else
+			node = ist->createNode(tid, numChildren);
+			#endif
+			node->degree = numChildren;
+			node->initSize = psetSize;
+
+			if (parallelizeWithOMP) {
+				#pragma omp parallel
+				{
+					#ifdef _OPENMP
+					auto sub_thread_id = omp_get_thread_num();
+					#else
+					auto sub_thread_id = tid; // it will just be this main thread
+					#endif
+					ist->initThread(sub_thread_id);
+					
+					#pragma omp for
 					for (size_t i=0;i<numChildren;++i) {
 						int sz = childSize + (i < remainder);
-						auto child = build(tid, childSet, sz, 1+currDepth, constructingSubtree);
+						KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
+						auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
 						
 						*node->ptrAddr(i) = NODE_TO_CASWORD(child);
-						if (i > 0) {
-							assert(child == NODE_TO_CASWORD(NULL) || child->degree > 1);
-							node->key(i-1) = childSet[0].k;
-						}
-						childSet += sz;
+						if (i > 0) node->key(i-1) = childSet[0].k;
 					}
 				}
-				node->minKey = node->key(0);
-				node->maxKey = node->key(node->degree-2);
-				return node;
+			} else {
+				KVPair *childSet = pset;
+				for (size_t i=0; i<numChildren; ++i) {
+					int sz = childSize + (i < remainder);
+					Node *child = build(tid, childSet, sz, 1+currDepth, constructingSubtree);
+					
+					*node->ptrAddr(i) = NODE_TO_CASWORD(child);
+					if (i > 0) {
+						assert(child == NODE_TO_CASWORD(NULL) || child->degree > 1);
+						node->key(i-1) = childSet[0].k;
+					}
+					childSet += sz;
+				}
 			}
+			node->minKey = node->key(0);
+			node->maxKey = node->key(node->degree-2);
+			return node;
 		}
 
 	public:
-		IdealBuilder(ist_brown *_ist, const size_t _initNumKeys, const size_t _depth) {
-			initNumKeys = _initNumKeys;
-			ist = _ist;
-			depth = _depth;
-			pairs = new KVPair[initNumKeys];
-			pairsAdded = 0;
-			tree = (casword_t) NULL;
+		IdealBuilder(ist_brown *ist, const size_t initNumKeys, const size_t depth) {
+			this->initNumKeys = initNumKeys;
+			this->ist = ist;
+			this->depth = depth;
+			this->pairs = new KVPair[initNumKeys];
+			this->pairsAdded = 0;
+			this->tree = (casword_t) NULL;
 		}
 		~IdealBuilder() {
 			delete[] pairs;
@@ -370,8 +367,12 @@ private:
 			pairs[pairsAdded++] = {key, value};
 			assert(pairsAdded <= initNumKeys);
 		}
-		casword_t getCASWord(const int tid, casword_t volatile * constructingSubtree, bool parallelizeWithOMP = false) {
-			if (*constructingSubtree != NODE_TO_CASWORD(NULL)) return NODE_TO_CASWORD(NULL);
+		casword_t getCASWord(const int tid,
+		                     casword_t volatile * constructingSubtree,
+		                     bool parallelizeWithOMP = false) {
+			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
+				return NODE_TO_CASWORD(NULL);
+
 			assert(pairsAdded == initNumKeys);
 			if (!tree) {
 				if (pairsAdded == 0)
@@ -381,10 +382,12 @@ private:
 				else
 					tree = NODE_TO_CASWORD(build(tid, pairs, pairsAdded, depth, constructingSubtree, parallelizeWithOMP));
 			}
+
 			if (*constructingSubtree != NODE_TO_CASWORD(NULL)) {
 				ist->freeSubtree(tid, tree, false);
 				return NODE_TO_CASWORD(NULL);
 			}
+
 			return tree;
 		}
 		
@@ -429,7 +432,7 @@ private:
 		return node;
 	}
 
-	Node *createLeaf(const int tid, KVPair * pairs, int numPairs)
+	Node *createLeaf(const int tid, KVPair *pairs, int numPairs)
 	{
 		Node *node = createNode(tid, numPairs+1);
 		node->degree = numPairs+1;
@@ -530,8 +533,6 @@ private:
 			foundVal = pair->v;
 		}
 	
-		assert(foundVal == this->NO_VALUE ||
-		       ((uint64_t) foundVal & 0xE000000000000000ULL) == 0);
 		 // value must have top 3 bits empty so we can shift it
 		assert(foundVal == this->NO_VALUE ||
 		       (((size_t)foundVal << 3) >> 3) == (size_t)foundVal);
@@ -604,7 +605,8 @@ private:
 		assert(0);
 	}
 
-	void rebuild_if_necessary(const int tid, Node **path, int pathLength, bool affectsChangeSum)
+	void rebuild_if_necessary(const int tid, Node **path, int pathLength,
+	                          bool affectsChangeSum)
 	{
 		if (!affectsChangeSum) return;
 
@@ -832,7 +834,12 @@ private:
 	    size_t depth;
 	    casword_t volatile newRoot;
 	    bool volatile success;
-	    int volatile debug_sync_in_experimental_no_collaboration_version; // serves as a sort of lock in a crappy version of the algorithm that is only included to show the advantage of our collaborative rebuilding technique (vs this crappy algorithm that has no collaborative rebuilding) ;; 0=unlocked, 1=locked in progress, 2=locked forever done
+		//> serves as a sort of lock in a crappy version of the algorithm that
+		//> is only included to show the advantage of our collaborative
+		//> rebuilding technique (vs this crappy algorithm that has no
+		//> collaborative rebuilding) ;;
+		//> 0=unlocked, 1=locked in progress, 2=locked forever done
+	    int volatile debug_sync_in_experimental_no_collaboration_version;
 	    RebuildOperation(Node *_rebuildRoot, Node *_parent, size_t _index, size_t _depth)
 	        : rebuildRoot(_rebuildRoot), parent(_parent), index(_index), depth(_depth),
 		      newRoot(NODE_TO_CASWORD(NULL)), success(false),
