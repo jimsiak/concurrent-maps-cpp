@@ -204,7 +204,7 @@ private:
 
 		//> facilitates recursive-collaborative markAndCount() by allowing threads
 		//> to dynamically soft-partition subtrees (NOT workstealing/exclusive
-		//> access---this is still a lock-free mechanism)
+		//> access - this is still a lock-free mechanism)
 		size_t volatile nextMarkAndCount;
 
 		//> could be merged with initSize above (subtract make initSize 1/4 of what
@@ -358,7 +358,7 @@ private:
 			this->depth = depth;
 			this->pairs = new KVPair[initNumKeys];
 			this->pairsAdded = 0;
-			this->tree = (casword_t) NULL;
+			this->tree = (casword_t)NULL;
 		}
 		~IdealBuilder() {
 			delete[] pairs;
