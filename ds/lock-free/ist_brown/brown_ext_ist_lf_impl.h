@@ -309,7 +309,6 @@ private:
 			#else
 			node = ist->createNode(tid, numChildren);
 			#endif
-			node->degree = numChildren;
 			node->initSize = psetSize;
 
 			if (parallelizeWithOMP) {
@@ -400,9 +399,8 @@ private:
 
 private:
 	RandomFNV1A threadRNGs[88];
-
-	Node *root;
 	dcssProvider<void* /* unused */> * const prov;
+	Node *root;
 
 private:
 	KVPair *createKVPair(const int tid, const K& key, const V& value)
@@ -850,9 +848,9 @@ private:
 	void rebuild(const int tid, Node *rebuildRoot, Node *parent, int indexOfRebuildRoot,
 	             const size_t depth)
 	{
-		auto op = new RebuildOperation(rebuildRoot, parent, indexOfRebuildRoot, depth);
-		auto ptr = REBUILDOP_TO_CASWORD(op);
-		auto old = NODE_TO_CASWORD(op->rebuildRoot);
+		RebuildOperation *op = new RebuildOperation(rebuildRoot, parent, indexOfRebuildRoot, depth);
+		casword_t ptr = REBUILDOP_TO_CASWORD(op);
+		casword_t old = NODE_TO_CASWORD(op->rebuildRoot);
 		assert(op->parent == parent);
 		auto result = prov->dcssPtr(tid, (casword_t *) &op->parent->dirty, 0,
 		                            (casword_t *) op->parent->ptrAddr(op->index),
@@ -864,7 +862,7 @@ private:
 			// this is because we are the only ones who will try to perform a DCSS
 			// to insert op into the data structure.
 			assert(result.status == DCSS_FAILED_ADDR1 || result.status == DCSS_FAILED_ADDR2);
-//		recordmgr->deallocate(tid, op);
+//			recordmgr->deallocate(tid, op);
 		}
 	}
 
@@ -908,11 +906,11 @@ private:
 		                            (casword_t *) op->parent->ptrAddr(op->index),
 		                            oldWord, newWord).status;
 		if (result == DCSS_SUCCESS) {
-//		SOFTWARE_BARRIER;
+			asm volatile("": : :"memory");
 			assert(op->success == false);
 			op->success = true;
-//		SOFTWARE_BARRIER;
-//		recordmgr->retire(tid, op);
+			asm volatile("": : :"memory");
+//			recordmgr->retire(tid, op);
 		} else {
 			// if we fail to CAS, then either:
 			// 1. someone else CAS'd exactly newWord into op->parent->ptrAddr(op->index), or
@@ -1010,19 +1008,19 @@ private:
 		//      (maybe avoiding sort order issues by saving per-thread lists and merging)
 	    
 		#if !defined IST_DISABLE_COLLABORATIVE_MARK_AND_COUNT
-    // optimize for contention by first claiming a subtree to recurse on
-    // THEN after there are no more subtrees to claim, help (any that are still DIRTY_STARTED)
-    if (node->degree > MAX_ACCEPTABLE_LEAF_SIZE) { // prevent this optimization from being applied at the leaves, where the number of fetch&adds will be needlessly high
-        while (1) {
-            auto ix = __sync_fetch_and_add(&node->nextMarkAndCount, 1);
-            if (ix >= node->degree) break;
-            markAndCount(tid, prov->readPtr(tid, node->ptrAddr(ix)));
+		// optimize for contention by first claiming a subtree to recurse on
+		// THEN after there are no more subtrees to claim, help (any that are still DIRTY_STARTED)
+		if (node->degree > MAX_ACCEPTABLE_LEAF_SIZE) { // prevent this optimization from being applied at the leaves, where the number of fetch&adds will be needlessly high
+			while (1) {
+				auto ix = __sync_fetch_and_add(&node->nextMarkAndCount, 1);
+				if (ix >= node->degree) break;
+				markAndCount(tid, prov->readPtr(tid, node->ptrAddr(ix)));
 
-						// markAndCount has already FINISHED in this subtree, and sum is the count
-            auto result = node->dirty;
-            if (IS_DIRTY_FINISHED(result)) return DIRTY_FINISHED_TO_SUM(result);
-        }
-    }
+				// markAndCount has already FINISHED in this subtree, and sum is the count
+				auto result = node->dirty;
+				if (IS_DIRTY_FINISHED(result)) return DIRTY_FINISHED_TO_SUM(result);
+			}
+		}
 		#endif
 	    
 		// recurse over all subtrees
@@ -1078,6 +1076,8 @@ private:
 			
 				for (size_t i=0;i<CASWORD_TO_NODE(word)->degree;++i)
 					*CASWORD_TO_NODE(word)->ptrAddr(i) = NODE_TO_CASWORD(NULL);
+				
+				//> FIXME here is a bit different than the original
 			}
 	        
 			// try to CAS node into the RebuildOp
@@ -1117,7 +1117,7 @@ private:
 		if (IS_KVPAIR(word) || keyCount <= MAX_ACCEPTABLE_LEAF_SIZE) return word;
 
 		assert(IS_NODE(word));
-		auto node = CASWORD_TO_NODE(word);
+		Node *node = CASWORD_TO_NODE(word);
 	    
 		// opportunistically try to build different subtrees from any other concurrent threads
 		// by synchronizing via node->degree. concurrent threads increment node->degree using cas
@@ -1225,7 +1225,7 @@ private:
 		auto numKeysToAdd = newChildSize;
 		// construct the subtree
 		addKVPairsSubset(tid, op, op->rebuildRoot, &numKeysToSkip, &numKeysToAdd,
-		op->depth, &b, parent->ptrAddr(ix)); 
+		                 op->depth, &b, parent->ptrAddr(ix)); 
 		if (parent->ptr(ix) != NODE_TO_CASWORD(NULL))
 			return;
 		
@@ -1265,17 +1265,17 @@ private:
 	void freeSubtree(const int tid, casword_t ptr, bool retire)
 	{
 		if (IS_KVPAIR(ptr)) {
-//	if (retire)
-//		recordmgr->retire(tid, CASWORD_TO_KVPAIR(ptr));
-//	else
-//		recordmgr->deallocate(tid, CASWORD_TO_KVPAIR(ptr));
+//			if (retire)
+//				recordmgr->retire(tid, CASWORD_TO_KVPAIR(ptr));
+//			else
+//				recordmgr->deallocate(tid, CASWORD_TO_KVPAIR(ptr));
 		} else if (IS_REBUILDOP(ptr)) {
 			auto op = CASWORD_TO_REBUILDOP(ptr);
 			freeSubtree(tid, NODE_TO_CASWORD(op->rebuildRoot), retire);
-//		if (retire)
-//			recordmgr->retire(tid, op);
-//		else
-//			recordmgr->deallocate(tid, op);
+//			if (retire)
+//				recordmgr->retire(tid, op);
+//			else
+//				recordmgr->deallocate(tid, op);
 		} else if (IS_NODE(ptr) && ptr != NODE_TO_CASWORD(NULL)) {
 			auto node = CASWORD_TO_NODE(ptr);
 			for (size_t i=0;i<node->degree;++i) {
@@ -1304,7 +1304,7 @@ private:
 		for (size_t i=0;i<node->degree;++i) {
 			auto ptr = prov->readPtr(tid, node->ptrAddr(i));
 			if (IS_NODE(ptr)) {
-				auto child = CASWORD_TO_NODE(ptr);
+				Node *child = CASWORD_TO_NODE(ptr);
 				if (child == NULL) continue;
 				
 				// claim subtree rooted at child
@@ -1339,14 +1339,14 @@ private:
 	void addKVPairs(const int tid, casword_t ptr, IdealBuilder *b)
 	{
 		if (IS_KVPAIR(ptr)) {
-			auto pair = CASWORD_TO_KVPAIR(ptr);
+			KVPair *pair = CASWORD_TO_KVPAIR(ptr);
 			b->addKV(tid, pair->k, pair->v);
 		} else if (IS_REBUILDOP(ptr)) {
-			auto op = CASWORD_TO_REBUILDOP(ptr);
+			RebuildOperation *op = CASWORD_TO_REBUILDOP(ptr);
 			addKVPairs(tid, NODE_TO_CASWORD(op->rebuildRoot), b);
 		} else {
 			assert(IS_NODE(ptr));
-			auto node = CASWORD_TO_NODE(ptr);
+			Node *node = CASWORD_TO_NODE(ptr);
 			assert(IS_DIRTY_FINISHED(node->dirty) && IS_DIRTY_STARTED(node->dirty));
 			for (size_t i=0;i<node->degree;++i) {
 				auto childptr = prov->readPtr(tid, node->ptrAddr(i));
