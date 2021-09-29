@@ -835,17 +835,10 @@ private:
 		size_t depth;
 		casword_t volatile newRoot;
 		bool volatile success;
-		//> serves as a sort of lock in a crappy version of the algorithm that
-		//> is only included to show the advantage of our collaborative
-		//> rebuilding technique (vs this crappy algorithm that has no
-		//> collaborative rebuilding) ;;
-		//> 0=unlocked, 1=locked in progress, 2=locked forever done
-		int volatile debug_sync_in_experimental_no_collaboration_version;
 
 		RebuildOperation(Node *_rebuildRoot, Node *_parent, size_t _index, size_t _depth)
 		  : rebuildRoot(_rebuildRoot), parent(_parent), index(_index), depth(_depth),
-		    newRoot(NODE_TO_CASWORD(NULL)), success(false),
-		    debug_sync_in_experimental_no_collaboration_version(0) {};
+		    newRoot(NODE_TO_CASWORD(NULL)), success(false) {};
 	};
 
 	void rebuild(const int tid, Node *rebuildRoot, Node *parent, int indexOfRebuildRoot,
@@ -874,36 +867,11 @@ private:
 		size_t keyCount = markAndCount(tid, NODE_TO_CASWORD(op->rebuildRoot));
 		casword_t oldWord = REBUILDOP_TO_CASWORD(op);
 
-		#ifdef IST_DISABLE_REBUILD_HELPING
-		if (__sync_bool_compare_and_swap(&op->debug_sync_in_experimental_no_collaboration_version, 0, 1)) {
-			// continue; you are the chosen one to rebuild the tree
-		} else {
-			// you are not the chosen one. you are not the rebuilder.
-			// minor experimental hack: just WAIT until op is replaced
-			// (no point "helping" (duplicating work) to facilitate a true simulation
-			//  of the lock-free no-collaboration algorithm in this case, since it
-			//  won't change results at all. no extra parallelism or performance is
-			//  gained by having n threads duplicate efforts rebuilding the entire
-			//  tree until exactly one succeeds. in practice there are no thread
-			//  crashes, and no major delays. in fact, the real lock-free algorithm
-			//  performs WORSE than this version, since there is a high cost for
-			//  allocating MANY tree nodes that are doomed to be useless, and will
-			//  subsequently need to be freed. so, the experiments will simply
-			//  *underestimate* the benefit of our collaborative rebuilding alg.)
-			while (op->debug_sync_in_experimental_no_collaboration_version == 1) ;
-			return;
-		}
-		#endif
-
 		casword_t newWord = createIdealConcurrent(tid, op, keyCount);
-		if (newWord == NODE_TO_CASWORD(NULL)) {
-			#ifdef IST_DISABLE_REBUILD_HELPING
-			op->debug_sync_in_experimental_no_collaboration_version = 2;
-			#endif
-			return; // someone else already *finished* helping
-			
-			// TODO: help to free old subtree?
-		}
+
+		// someone else already *finished* helping
+		// TODO: help to free old subtree?
+		if (newWord == NODE_TO_CASWORD(NULL)) return; 
 
 		auto result = prov->dcssPtr(tid, (casword_t *) &op->parent->dirty, 0,
 		                            (casword_t *) op->parent->ptrAddr(op->index),
@@ -963,10 +931,6 @@ private:
 				#endif
 			}
 		}
-	    
-		#ifdef IST_DISABLE_REBUILD_HELPING
-		op->debug_sync_in_experimental_no_collaboration_version = 2;
-		#endif
 	}
 
 	size_t markAndCount(const int tid, const casword_t ptr)
