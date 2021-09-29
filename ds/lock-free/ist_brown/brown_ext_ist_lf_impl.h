@@ -194,6 +194,9 @@ private:
 		//> field not *technically* needed (same as above)
 		K maxKey;
 
+		//> field likely not needed (but convenient and good for debug asserts)
+		size_t capacity;
+
 		//> initial size (at time of last rebuild) of the subtree rooted at this node
 		size_t initSize;
 
@@ -418,6 +421,7 @@ private:
 		Node *node = (Node *) ::operator new (sz);
 		assert((((size_t) node) & TOTAL_MASK) == 0);
 		node->degree = degree;
+		node->capacity = 0;
 		node->initSize = 0;
 		node->changeSum = 0;
 		#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
@@ -906,10 +910,8 @@ private:
 		                            (casword_t *) op->parent->ptrAddr(op->index),
 		                            oldWord, newWord).status;
 		if (result == DCSS_SUCCESS) {
-			asm volatile("": : :"memory");
 			assert(op->success == false);
 			op->success = true;
-			asm volatile("": : :"memory");
 //			recordmgr->retire(tid, op);
 		} else {
 			// if we fail to CAS, then either:
@@ -1076,12 +1078,11 @@ private:
 			
 				for (size_t i=0;i<CASWORD_TO_NODE(word)->degree;++i)
 					*CASWORD_TO_NODE(word)->ptrAddr(i) = NODE_TO_CASWORD(NULL);
-				
-				//> FIXME here is a bit different than the original
 			}
 	        
 			// try to CAS node into the RebuildOp
-			if (__sync_bool_compare_and_swap(&op->newRoot, NODE_TO_CASWORD(NULL), word)) { // this should (and will) fail if op->newRoot == EMPTY_VAL_TO_CASWORD because helping is done
+			if (__sync_bool_compare_and_swap(&op->newRoot, NODE_TO_CASWORD(NULL), word)) { 
+				// this should (and will) fail if op->newRoot == EMPTY_VAL_TO_CASWORD because helping is done
 				assert(word != NODE_TO_CASWORD(NULL));
 			} else {
 				// we failed the newRoot CAS, so we lost the consensus race.
@@ -1111,23 +1112,25 @@ private:
 		}
 		assert(word != NODE_TO_CASWORD(NULL));
 		assert(op->newRoot != NODE_TO_CASWORD(NULL));
-		assert(op->newRoot == word || EMPTY_VAL_TO_CASWORD /* as per above, rebuildop was part of a subtree that was rebuilt, and "word" was reclaimed! */);
+		/* as per above, rebuildop was part of a subtree that was rebuilt, and "word" was reclaimed! */
+		assert(op->newRoot == word || EMPTY_VAL_TO_CASWORD);
 	    
 		// stop here if there is no subtree to build (just one kvpair or node)
 		if (IS_KVPAIR(word) || keyCount <= MAX_ACCEPTABLE_LEAF_SIZE) return word;
 
 		assert(IS_NODE(word));
 		Node *node = CASWORD_TO_NODE(word);
-	    
+		assert(node->degree == numChildren);
+
 		// opportunistically try to build different subtrees from any other concurrent threads
-		// by synchronizing via node->degree. concurrent threads increment node->degree using cas
+		// by synchronizing via node->capacity. concurrent threads increment node->capacity using cas
 		// to "reserve" a subtree to work on (not truly exclusively---still a lock-free mechanism).
 		while (1) {
-			auto ix = node->degree;
+			auto ix = node->capacity;
 			// skip to the helping phase if all subtrees are already being constructed
 			if (ix >= node->degree) break;
 			// use cas to soft-reserve a subtree to construct
-			if (__sync_bool_compare_and_swap(&node->degree, ix, 1+ix))
+			if (__sync_bool_compare_and_swap(&node->capacity, ix, 1+ix))
 				subtreeBuildAndReplace(tid, op, node, ix, childSize, remainder);
 		}
 
@@ -1136,8 +1139,8 @@ private:
 
 		// help linearly starting at a random position (to probabilistically scatter helpers)
 		// TODO: determine if helping starting at my own thread id would help? or randomizing my chosen subtree every time i want to help one? possibly help according to a random permutation?
-		auto ix = threadRNGs[tid].next(numChildren); //myRNG->next(numChildren);
-		for (size_t __i=0;__i<numChildren;++__i) {
+		auto ix = threadRNGs[tid].next(numChildren);
+		for (size_t __i=0; __i<numChildren; ++__i) {
 			auto i = (__i+ix) % numChildren;
 			if (prov->readPtr(tid, node->ptrAddr(i)) == NODE_TO_CASWORD(NULL))
 				subtreeBuildAndReplace(tid, op, node, i, childSize, remainder);
@@ -1245,7 +1248,8 @@ private:
 		assert(prov->readPtr(tid, parent->ptrAddr(ix)));
 	}
 
-	void freeNode(const int tid, Node *node, bool retire) {
+	void freeNode(const int tid, Node *node, bool retire)
+	{
 //	if (retire) {
 //		#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
 //		if (node->externalChangeCounter)
@@ -1264,76 +1268,77 @@ private:
 
 	void freeSubtree(const int tid, casword_t ptr, bool retire)
 	{
-		if (IS_KVPAIR(ptr)) {
-//			if (retire)
-//				recordmgr->retire(tid, CASWORD_TO_KVPAIR(ptr));
-//			else
-//				recordmgr->deallocate(tid, CASWORD_TO_KVPAIR(ptr));
-		} else if (IS_REBUILDOP(ptr)) {
-			auto op = CASWORD_TO_REBUILDOP(ptr);
-			freeSubtree(tid, NODE_TO_CASWORD(op->rebuildRoot), retire);
-//			if (retire)
-//				recordmgr->retire(tid, op);
-//			else
-//				recordmgr->deallocate(tid, op);
-		} else if (IS_NODE(ptr) && ptr != NODE_TO_CASWORD(NULL)) {
-			auto node = CASWORD_TO_NODE(ptr);
-			for (size_t i=0;i<node->degree;++i) {
-				auto child = prov->readPtr(tid, node->ptrAddr(i));
-				freeSubtree(tid, child, retire);
-			}
-			freeNode(tid, node, retire);
-		}
+//		if (IS_KVPAIR(ptr)) {
+////			if (retire)
+////				recordmgr->retire(tid, CASWORD_TO_KVPAIR(ptr));
+////			else
+////				recordmgr->deallocate(tid, CASWORD_TO_KVPAIR(ptr));
+//		} else if (IS_REBUILDOP(ptr)) {
+//			auto op = CASWORD_TO_REBUILDOP(ptr);
+//			freeSubtree(tid, NODE_TO_CASWORD(op->rebuildRoot), retire);
+////			if (retire)
+////				recordmgr->retire(tid, op);
+////			else
+////				recordmgr->deallocate(tid, op);
+//		} else if (IS_NODE(ptr) && ptr != NODE_TO_CASWORD(NULL)) {
+//			auto node = CASWORD_TO_NODE(ptr);
+//			for (size_t i=0;i<node->degree;++i) {
+//				auto child = prov->readPtr(tid, node->ptrAddr(i));
+//				freeSubtree(tid, child, retire);
+//			}
+//			freeNode(tid, node, retire);
+//		}
 	}
 
-	void helpFreeSubtree(const int tid, Node *node) {
-		// if node is the root of a *large* subtree (256+ children),
-		// then have threads *collaborate* by reserving individual subtrees to free.
-		// idea: reserve a subtree before freeing it by CASing it to NULL
-		//       we are done when all pointers are NULL.
-
-		// conceptually you reserve the right to reclaim everything under a node
-		// (including the node) when you set its DIRTY_DIRTY_MARKED_FOR_FREE_MASK bit
-		//
-		// note: the dirty field doesn't exist for kvpair, value, empty value and rebuildop objects...
-		// so to reclaim those if they are children of the root node passed to this function,
-		// we claim the entire root node at the end, and go through those with one thread.
-	    
-		// first, claim subtrees rooted at CHILDREN of this node
-		// TODO: does this improve if we scatter threads in this iteration?
-		for (size_t i=0;i<node->degree;++i) {
-			auto ptr = prov->readPtr(tid, node->ptrAddr(i));
-			if (IS_NODE(ptr)) {
-				Node *child = CASWORD_TO_NODE(ptr);
-				if (child == NULL) continue;
-				
-				// claim subtree rooted at child
-				while (true) {
-					auto old = child->dirty;
-					if (IS_DIRTY_MARKED_FOR_FREE(old)) break;
-					if (CASB(&child->dirty, old, old | DIRTY_MARKED_FOR_FREE_MASK))
-						freeSubtree(tid, ptr, true);
-				}
-			}
-		}
-	    
-		// then try to claim the node itself to handle special object types (kvpair, value, empty value, rebuildop).
-		// claim node and its pointers that go to kvpair, value, empty value and rebuildop objects, specifically
-		// (since those objects, and their descendents in the case of a rebuildop object,
-		// are what remain unfreed [since all descendents of direct child *node*s have all been freed])
-		while (true) {
-			auto old = node->dirty;
-			if (IS_DIRTY_MARKED_FOR_FREE(old)) break;
-			if (CASB(&node->dirty, old, old | DIRTY_MARKED_FOR_FREE_MASK)) {
-				// clean up pointers to non-*node* objects (and descendents of such objects)
-				for (size_t i=0;i<node->degree;++i) {
-					auto ptr = prov->readPtr(tid, node->ptrAddr(i));
-					if (!IS_NODE(ptr))
-						freeSubtree(tid, ptr, true);
-				}
-				freeNode(tid, node, true); // retire the ACTUAL node
-			}
-		}
+	void helpFreeSubtree(const int tid, Node *node)
+	{
+//		// if node is the root of a *large* subtree (256+ children),
+//		// then have threads *collaborate* by reserving individual subtrees to free.
+//		// idea: reserve a subtree before freeing it by CASing it to NULL
+//		//       we are done when all pointers are NULL.
+//
+//		// conceptually you reserve the right to reclaim everything under a node
+//		// (including the node) when you set its DIRTY_DIRTY_MARKED_FOR_FREE_MASK bit
+//		//
+//		// note: the dirty field doesn't exist for kvpair, value, empty value and rebuildop objects...
+//		// so to reclaim those if they are children of the root node passed to this function,
+//		// we claim the entire root node at the end, and go through those with one thread.
+//	    
+//		// first, claim subtrees rooted at CHILDREN of this node
+//		// TODO: does this improve if we scatter threads in this iteration?
+//		for (size_t i=0;i<node->degree;++i) {
+//			auto ptr = prov->readPtr(tid, node->ptrAddr(i));
+//			if (IS_NODE(ptr)) {
+//				Node *child = CASWORD_TO_NODE(ptr);
+//				if (child == NULL) continue;
+//				
+//				// claim subtree rooted at child
+//				while (true) {
+//					auto old = child->dirty;
+//					if (IS_DIRTY_MARKED_FOR_FREE(old)) break;
+//					if (CASB(&child->dirty, old, old | DIRTY_MARKED_FOR_FREE_MASK))
+//						freeSubtree(tid, ptr, true);
+//				}
+//			}
+//		}
+//	    
+//		// then try to claim the node itself to handle special object types (kvpair, value, empty value, rebuildop).
+//		// claim node and its pointers that go to kvpair, value, empty value and rebuildop objects, specifically
+//		// (since those objects, and their descendents in the case of a rebuildop object,
+//		// are what remain unfreed [since all descendents of direct child *node*s have all been freed])
+//		while (true) {
+//			auto old = node->dirty;
+//			if (IS_DIRTY_MARKED_FOR_FREE(old)) break;
+//			if (CASB(&node->dirty, old, old | DIRTY_MARKED_FOR_FREE_MASK)) {
+//				// clean up pointers to non-*node* objects (and descendents of such objects)
+//				for (size_t i=0;i<node->degree;++i) {
+//					auto ptr = prov->readPtr(tid, node->ptrAddr(i));
+//					if (!IS_NODE(ptr))
+//						freeSubtree(tid, ptr, true);
+//				}
+//				freeNode(tid, node, true); // retire the ACTUAL node
+//			}
+//		}
 	}
 
 	void addKVPairs(const int tid, casword_t ptr, IdealBuilder *b)
