@@ -369,9 +369,8 @@ private:
 			pairs[pairsAdded++] = {key, value};
 			assert(pairsAdded <= initNumKeys);
 		}
-		casword_t getCASWord(const int tid,
-		                     casword_t volatile * constructingSubtree,
-		                     bool parallelizeWithOMP = false) {
+		casword_t getCASWord(const int tid, casword_t volatile *constructingSubtree)
+		{
 			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
 				return NODE_TO_CASWORD(NULL);
 
@@ -382,7 +381,7 @@ private:
 				else if (pairsAdded == 1)
 					tree = KVPAIR_TO_CASWORD(ist->createKVPair(tid, pairs[0].k, pairs[0].v));
 				else
-					tree = NODE_TO_CASWORD(build(tid, pairs, pairsAdded, depth, constructingSubtree, parallelizeWithOMP));
+					tree = NODE_TO_CASWORD(build(tid, pairs, pairsAdded, depth, constructingSubtree));
 			}
 
 			if (*constructingSubtree != NODE_TO_CASWORD(NULL)) {
@@ -1223,9 +1222,10 @@ private:
 		auto newChildSize = childSize + (ix < remainder);
 		
 		// build new subtree
-		IdealBuilder b (this, newChildSize, 1+op->depth);
+		IdealBuilder b(this, newChildSize, 1+op->depth);
 		auto numKeysToSkip = totalSizeSoFar;
 		auto numKeysToAdd = newChildSize;
+
 		// construct the subtree
 		addKVPairsSubset(tid, op, op->rebuildRoot, &numKeysToSkip, &numKeysToAdd,
 		                 op->depth, &b, parent->ptrAddr(ix)); 
