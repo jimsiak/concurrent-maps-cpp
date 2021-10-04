@@ -178,7 +178,7 @@ private:
 				TX_ABORT(ABORT_VALIDATION_FAILURE);
 	
 	//		int new_internal_key = (key < leaf->key) ? key : leaf->key;
-			int new_internal_key = key;
+			const K new_internal_key = key;
 	//		if (new_internal_key <= parent->key) {
 				node_t *prev = parent->prev;
 				if (prev && new_internal_key <= prev->key)
@@ -324,7 +324,7 @@ private:
 	const V do_insert(node_t *new_nodes[2], node_t *leaf)
 	{
 		node_t *prev = NULL, *succ = NULL;
-		int key = new_nodes[0]->key;
+		K key = new_nodes[0]->key;
 	
 		if (!leaf) {
 			new_nodes[1]->live = 1;
@@ -673,9 +673,9 @@ private:
 			return;
 		}
 	
-		printf("%d (%d, %d)\n", root->key,
-		       root->prev ? root->prev->key : -1,
-		       root->succ ? root->succ->key : -1);
+		printf("%llu (%llu, %llu)\n", root->key,
+		       root->prev ? root->prev->key : 0,
+		       root->succ ? root->succ->key : 0);
 	
 		print_rec(root->left, level + 1);
 	}

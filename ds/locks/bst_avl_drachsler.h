@@ -29,8 +29,8 @@
 #define MAX_KEY_DRACHSLER 9999999999
 #define MIN_KEY_DRACHSLER 0
 
-#define MARK(n) ((n)->marked = true)
-#define IS_MARKED(n) ((n)->marked)
+#define DRACHSLER_MARK(n) ((n)->marked = true)
+#define DRACHSLER_IS_MARKED(n) ((n)->marked)
 
 #define MAX(a,b) ( (a) >= (b) ? (a) : (b) )
 #define ABS(a) ( ((a) >= 0) ? (a) : -(a) )
@@ -125,7 +125,7 @@ private:
 		node_t *n = search(k);
 		while (n->key > k && n->pred->key >= k) n = n->pred;
 		while (n->key < k && n->succ->key <= k) n = n->succ;
-		return (n->key == k && !IS_MARKED(n));
+		return (n->key == k && !DRACHSLER_IS_MARKED(n));
 	}
 
 	/*****************************************************************************/
@@ -235,7 +235,7 @@ private:
 		while (1) {
 			p = n->parent;
 			LOCK(&p->tree_lock);
-			if (n->parent == p && !IS_MARKED(p)) return p;
+			if (n->parent == p && !DRACHSLER_IS_MARKED(p)) return p;
 			UNLOCK(&p->tree_lock);
 		}
 	}
@@ -284,7 +284,7 @@ private:
 			LOCK(&p->succ_lock);
 			s = p->succ;
 	
-			if (k > p->key && k <= s->key && !IS_MARKED(p)) {
+			if (k > p->key && k <= s->key && !DRACHSLER_IS_MARKED(p)) {
 				//> Key already in the tree
 				if (s->key == k) {
 					UNLOCK(&p->succ_lock);
@@ -355,7 +355,7 @@ private:
 					UNLOCK(&n->tree_lock);
 					continue;
 				}
-				if (sp != s->parent || IS_MARKED(sp)) {
+				if (sp != s->parent || DRACHSLER_IS_MARKED(sp)) {
 					UNLOCK(&sp->tree_lock);
 					UNLOCK(&parent->tree_lock);
 					UNLOCK(&n->tree_lock);
@@ -435,7 +435,7 @@ private:
 			LOCK(&p->succ_lock);
 			s = p->succ;
 	
-			if (k > p->key && k <= s->key && !IS_MARKED(p)) {
+			if (k > p->key && k <= s->key && !DRACHSLER_IS_MARKED(p)) {
 				if (s->key > k) {
 					UNLOCK(&p->succ_lock);
 					return this->NO_VALUE;
@@ -443,7 +443,7 @@ private:
 				LOCK(&s->succ_lock);
 				has_two_children = acquire_tree_locks(s);
 				const V ret = s->value;
-				MARK(s);
+				DRACHSLER_MARK(s);
 				s_succ = s->succ;
 				s_succ->pred = p;
 				p->succ = s_succ;
@@ -467,7 +467,7 @@ private:
 			LOCK(&p->succ_lock);
 			s = p->succ;
 	
-			if (k > p->key && k <= s->key && !IS_MARKED(p)) {
+			if (k > p->key && k <= s->key && !DRACHSLER_IS_MARKED(p)) {
 				if (op_is_insert == -1) {
 					if (s->key == k) op_is_insert = 0;
 					else             op_is_insert = 1;
@@ -498,7 +498,7 @@ private:
 					}
 					LOCK(&s->succ_lock);
 					has_two_children = acquire_tree_locks(s);
-					MARK(s);
+					DRACHSLER_MARK(s);
 					s_succ = s->succ;
 					s_succ->pred = p;
 					p->succ = s_succ;

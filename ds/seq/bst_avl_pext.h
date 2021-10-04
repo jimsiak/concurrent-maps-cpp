@@ -441,7 +441,7 @@ private:
 			return;
 		}
 	
-		printf("%d [%d]\n", root->key, root->height);
+		printf("%llu [%d]\n", root->key, root->height);
 	
 		print_rec(root->left, level + 1);
 	}

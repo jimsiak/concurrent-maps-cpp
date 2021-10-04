@@ -684,9 +684,9 @@ private:
 			return;
 		}
 	
-		printf("%d (%d, %d)\n", root->key,
-		       root->prev ? root->prev->key : -1,
-		       root->succ ? root->succ->key : -1);
+		printf("%llu (%llu, %llu)\n", root->key,
+		       root->prev ? root->prev->key : 0,
+		       root->succ ? root->succ->key : 0);
 	
 		print_rec(root->left, level + 1);
 	}

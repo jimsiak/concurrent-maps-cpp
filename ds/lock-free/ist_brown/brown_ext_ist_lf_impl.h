@@ -742,27 +742,27 @@ private:
 			#endif
 			node->initSize = psetSize;
 
-			if (parallelizeWithOMP) {
-				#pragma omp parallel
-				{
-					#ifdef _OPENMP
-					auto sub_thread_id = omp_get_thread_num();
-					#else
-					auto sub_thread_id = tid; // it will just be this main thread
-					#endif
-					ist->initThread(sub_thread_id);
-					
-					#pragma omp for
-					for (size_t i=0;i<numChildren;++i) {
-						int sz = childSize + (i < remainder);
-						KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
-						auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
-						
-						*node->ptrAddr(i) = NODE_TO_CASWORD(child);
-						if (i > 0) node->key(i-1) = childSet[0].k;
-					}
-				}
-			} else {
+//			if (parallelizeWithOMP) {
+//				#pragma omp parallel
+//				{
+//					#ifdef _OPENMP
+//					auto sub_thread_id = omp_get_thread_num();
+//					#else
+//					auto sub_thread_id = tid; // it will just be this main thread
+//					#endif
+//					ist->initThread(sub_thread_id);
+//					
+//					#pragma omp for
+//					for (size_t i=0;i<numChildren;++i) {
+//						int sz = childSize + (i < remainder);
+//						KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
+//						auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
+//						
+//						*node->ptrAddr(i) = NODE_TO_CASWORD(child);
+//						if (i > 0) node->key(i-1) = childSet[0].k;
+//					}
+//				}
+//			} else {
 				KVPair *childSet = pset;
 				for (size_t i=0; i<numChildren; ++i) {
 					int sz = childSize + (i < remainder);
@@ -775,7 +775,7 @@ private:
 					}
 					childSet += sz;
 				}
-			}
+//			}
 			node->minKey = node->key(0);
 			node->maxKey = node->key(node->degree-2);
 			return node;

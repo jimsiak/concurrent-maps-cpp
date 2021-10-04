@@ -138,8 +138,8 @@ private:
 		}
 	
 		if (seen_state == STATE_OP_SUCCESSFUL) {
-			CAS_PTR(&(op->relocate_op.dest->key), op->relocate_op.remove_key, op->relocate_op.replace_key);
-			CAS_PTR(&(op->relocate_op.dest->value), op->relocate_op.remove_value, op->relocate_op.replace_value);
+			K dummy = CAS_PTR(&(op->relocate_op.dest->key), op->relocate_op.remove_key, op->relocate_op.replace_key);
+			V dummy1 = CAS_PTR(&(op->relocate_op.dest->value), op->relocate_op.remove_value, op->relocate_op.replace_value);
 			void *dummy2 = CAS_PTR(&(op->relocate_op.dest->op), FLAG(op, STATE_OP_RELOCATE), FLAG(op, STATE_OP_NONE));
 		}
 	
@@ -321,7 +321,7 @@ private:
 			(*reloc_op)->relocate_op.dest = curr;
 			(*reloc_op)->relocate_op.dest_op = curr_op;
 			(*reloc_op)->relocate_op.remove_key = k;
-			(*reloc_op)->relocate_op.remove_value = (V)res;
+			(*reloc_op)->relocate_op.remove_value = (V)((K)res);
 			(*reloc_op)->relocate_op.replace_key = replace->key;
 			(*reloc_op)->relocate_op.replace_value = replace->value;
 	

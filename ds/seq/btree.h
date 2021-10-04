@@ -599,7 +599,7 @@ public:
 	
 		*node_stack_top = -1;
 		n = root;
-		if (!n) return false;
+		if (!n) return this->NO_VALUE;
 	
 		while (!n->leaf) {
 			index = n->search(key);
@@ -891,7 +891,7 @@ public:
 			if (cur_cp->no_keys >= BTREE_ORDER) break;
 	
 			//> First try to borrow keys from siblings
-			node_t *sibling_left, *sibling_right;
+			node_t *sibling_left = NULL, *sibling_right = NULL;
 			parent = node_stack[stack_top-1];
 			parent_index = node_stack_indexes[stack_top-1];
 			new_parent = borrow_keys_with_copies(cur_cp, parent, parent_index,

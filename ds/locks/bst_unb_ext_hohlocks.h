@@ -87,7 +87,7 @@ private:
 			if (!*gparent && *parent) UNLOCK(&root_lock);
 			if (*gparent) UNLOCK(&(*gparent)->lock);
 	
-			int leaf_key = (*leaf)->key;
+			K leaf_key = (*leaf)->key;
 			*gparent = *parent;
 			*parent = *leaf;
 			*leaf = (key <= leaf_key) ? (*leaf)->left : (*leaf)->right;
@@ -279,7 +279,7 @@ private:
 			return;
 		}
 	
-		printf("%d\n", root->key);
+		printf("%llu\n", root->key);
 	
 		print_rec(root->left, level + 1);
 	}

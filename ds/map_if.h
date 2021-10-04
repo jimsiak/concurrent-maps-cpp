@@ -63,8 +63,8 @@ public:
 	/**
 	 * The interface necessary for Contention-adaptive synchronization
 	 **/
-	virtual const K& max_key() { return -1; };
-	virtual const K& min_key() { return -1; };
+	virtual const K& max_key() { return INF_KEY; };
+	virtual const K& min_key() { return INF_KEY; };
 	virtual void *split(void **right_part) { return NULL; };
 	virtual void *join(void *treap_right) { return NULL; };
 
