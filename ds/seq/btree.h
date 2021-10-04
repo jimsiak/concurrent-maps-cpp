@@ -2,6 +2,11 @@
  * A B+-tree.
  **/
 
+/**
+ * Note about the used values:
+ *   - Need to be of pointer type, because we have node_t::children to be void *
+ **/
+
 #pragma once
 
 #include "../rcu-htm/ht.h"
@@ -614,7 +619,7 @@ public:
 		index = node_stack_indexes[*node_stack_top];
 		if (*node_stack_top >= 0 && index < n->no_keys
 		                         && n->keys[index] == key)
-			return n->children[index+1];
+			return (V)n->children[index+1];
 		return this->NO_VALUE;
 	}
 

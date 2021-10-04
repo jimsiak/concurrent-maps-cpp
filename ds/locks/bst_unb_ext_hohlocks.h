@@ -108,7 +108,7 @@ private:
 		return ret;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *gparent, *parent, *leaf;
 	
@@ -118,7 +118,7 @@ private:
 		if (!leaf) {
 			root = new node_t(key, value);
 			UNLOCK(&root_lock);
-			return 1;
+			return this->NO_VALUE;
 		}
 	
 		// Key already in the tree.
@@ -127,7 +127,7 @@ private:
 			if (parent) UNLOCK(&parent->lock);
 			if (gparent) UNLOCK(&gparent->lock);
 			if (!gparent || !parent) UNLOCK(&root->lock);
-			return 0;
+			return leaf->value;
 		}
 	
 		// Create new internal and leaf nodes.
@@ -154,10 +154,10 @@ private:
 			UNLOCK(&leaf->lock);
 		}
 	
-		return 1;
+		return this->NO_VALUE;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *gparent, *parent, *leaf;
 	
@@ -166,7 +166,7 @@ private:
 		// Empty tree.
 		if (!leaf) {
 			UNLOCK(&root_lock);
-			return 0;
+			return this->NO_VALUE;
 		}
 		// Key not in the tree.
 		if (leaf->key != key) {
@@ -174,15 +174,17 @@ private:
 			if (parent) UNLOCK(&parent->lock);
 			if (gparent) UNLOCK(&gparent->lock);
 			if (!gparent || !parent) UNLOCK(&root_lock);
-			return 0;
+			return this->NO_VALUE;
 		}
 	
+		const V ret = leaf->value;
+
 		// Only one node in the tree.
 		if (!parent) {
 			root = NULL;
 			UNLOCK(&leaf->lock);
 			UNLOCK(&root_lock);
-			return 1;
+			return ret;
 		}
 	
 		node_t *sibling = (key <= parent->key) ? parent->right : parent->left;
@@ -199,7 +201,7 @@ private:
 			UNLOCK(&gparent->lock);
 		}
 	
-		return 1;
+		return ret;
 	}
 	
 	int key_in_max_path, key_in_min_path;
@@ -326,17 +328,14 @@ const V BST_UNB_EXT_HOHLOCKS_FUNCT::insert(const int tid, const K& key, const V&
 BST_UNB_EXT_HOHLOCKS_TEMPL
 const V BST_UNB_EXT_HOHLOCKS_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_UNB_EXT_HOHLOCKS_TEMPL
 const std::pair<V,bool> BST_UNB_EXT_HOHLOCKS_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_EXT_HOHLOCKS_TEMPL

@@ -1,1 +1,0 @@
-g_thr_pinning_policy=0-0

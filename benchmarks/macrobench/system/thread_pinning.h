@@ -27,7 +27,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
-#include "../../../trevor_brown_ppopp20_interpolation_trees/common/plaf.h"
+#include "../../../../trevor_brown_ppopp20_interpolation_trees/common/plaf.h"
 
 namespace thread_pinning {
     

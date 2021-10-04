@@ -2,6 +2,11 @@
  * An (a,b)-tree.
  **/
 
+/**
+ * Note about the used values:
+ *   - Need to be of pointer type, because we have node_t::children to be void *
+ **/
+
 #pragma once
 
 #include "../rcu-htm/ht.h"
@@ -533,7 +538,7 @@ private:
 		if (index >= n->no_keys || key != n->keys[index])
 			return this->NO_VALUE;
 		//> Key in the tree.
-		V ret = n->children[index+1];
+		V ret = (V)n->children[index+1];
 		do_delete(key, node_stack, node_stack_indexes,
 		          node_stack_top, &should_rebalance);
 		while (should_rebalance)
@@ -727,7 +732,7 @@ public:
 
 		index = stack_indexes[*stack_top];
 		if (*stack_top >= 0 && index < n->no_keys && n->keys[index] == key)
-			return n->children[index+1];
+			return (V)n->children[index+1];
 		else
 			return this->NO_VALUE;
 	}
