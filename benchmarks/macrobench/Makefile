@@ -13,6 +13,7 @@ CFLAGS += -Wno-format
 #CFLAGS += -DNDEBUG
 CFLAGS += -DNO_CLEANUP_AFTER_WORKLOAD
 CFLAGS += -mrtm
+CFLAGS += -Wno-write-strings
 
 ### if you do not have PAPI, comment out these two lines
 #CFLAGS += -DUSE_PAPI
