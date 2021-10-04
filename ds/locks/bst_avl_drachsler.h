@@ -27,10 +27,10 @@
 #include "lock.h"
 
 #define MAX_KEY_DRACHSLER 9999999999
-#define MIN_KEY_DRACHSLER -1
+#define MIN_KEY_DRACHSLER 0
 
-#define MARK(n) ((n)->value = (void *)0xFFFFFFFFLLU)
-#define IS_MARKED(n) ((n)->value == (void *)0xFFFFFFFFLLU)
+#define MARK(n) ((n)->marked = true)
+#define IS_MARKED(n) ((n)->marked)
 
 #define MAX(a,b) ( (a) >= (b) ? (a) : (b) )
 #define ABS(a) ( ((a) >= 0) ? (a) : -(a) )
@@ -79,6 +79,8 @@ private:
 	
 		short int lheight, rheight;
 
+		bool marked;
+
 		node_lock_t tree_lock, succ_lock;
 	
 		node_t *left, *right, *parent;
@@ -90,6 +92,7 @@ private:
 			this->value = value;
 			this->lheight = lheight;
 			this->rheight = rheight;
+			this->marked = false;
 			this->parent = this->succ = this->pred = NULL;
 			this->right = this->left = NULL;
 			INIT_LOCK(&this->tree_lock);
@@ -269,7 +272,7 @@ private:
 		rebalance(lock_parent(p), p);
 	}
 	
-	int insert_helper(const K& k, const V& v)
+	const V insert_helper(const K& k, const V& v)
 	{
 		assert((void *)v != (void *)0xFFFFFFFFLLU);
 
@@ -285,7 +288,7 @@ private:
 				//> Key already in the tree
 				if (s->key == k) {
 					UNLOCK(&p->succ_lock);
-					return 0;
+					return s->value;
 				}
 				//> Ordering insertion
 				new_node = new node_t(k, v);
@@ -298,7 +301,7 @@ private:
 				UNLOCK(&p->succ_lock);
 				//> Tree Layout insertion
 				insert_to_tree(parent, new_node);
-				return 1;
+				return this->NO_VALUE;
 			}
 			UNLOCK(&p->succ_lock);
 		}
@@ -421,7 +424,7 @@ private:
 		}
 	}
 	
-	int delete_helper(const K& k)
+	const V delete_helper(const K& k)
 	{
 		node_t *node, *p, *s, *s_succ;
 		int has_two_children;
@@ -435,10 +438,11 @@ private:
 			if (k > p->key && k <= s->key && !IS_MARKED(p)) {
 				if (s->key > k) {
 					UNLOCK(&p->succ_lock);
-					return 0;
+					return this->NO_VALUE;
 				}
 				LOCK(&s->succ_lock);
 				has_two_children = acquire_tree_locks(s);
+				const V ret = s->value;
 				MARK(s);
 				s_succ = s->succ;
 				s_succ->pred = p;
@@ -446,7 +450,7 @@ private:
 				UNLOCK(&s->succ_lock);
 				UNLOCK(&p->succ_lock);
 				remove_from_tree(s, has_two_children);
-				return 1; 
+				return ret; 
 			}
 			UNLOCK(&p->succ_lock);
 		}
@@ -650,17 +654,14 @@ const V BST_AVL_DRACHSLER_FUNCT::insert(const int tid, const K& key, const V& va
 BST_AVL_DRACHSLER_TEMPL
 const V BST_AVL_DRACHSLER_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_DRACHSLER_TEMPL
 const std::pair<V,bool> BST_AVL_DRACHSLER_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_DRACHSLER_TEMPL
