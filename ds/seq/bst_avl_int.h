@@ -343,6 +343,7 @@ private:
 			succ = node_stack[stack_top];
 	
 			place->key = succ->key;
+			place->value = succ->value;
 			if (succ_parent->left == succ) succ_parent->left = succ->right;
 			else succ_parent->right = succ->right;
 	
@@ -491,8 +492,8 @@ public:
 	/**
 	 * RCU-HTM adapting methods.
 	 **/
-	bool traverse_with_stack(const K& key, void **stack,
-	                         int *stack_indexes, int *stack_top)
+	const V traverse_with_stack(const K& key, void **stack,
+	                            int *stack_indexes, int *stack_top)
 	{
 		node_t *parent, *leaf;
 		node_t **node_stack = (node_t **)stack;
@@ -510,8 +511,10 @@ public:
 			leaf = (key <= leaf->key) ? leaf->left : leaf->right;
 		}
 
-		if (*stack_top < 0) return false;
-		else return (node_stack[*stack_top]->key == key);
+		if (*stack_top >= 0 && node_stack[*stack_top]->key == key)
+			return node_stack[*stack_top]->value;
+		else
+			return this->NO_VALUE;
 	}
 	void install_copy(void *connpoint, void *privcopy,
 	                  int *node_stack_indexes, int connpoint_stack_index)
@@ -721,8 +724,10 @@ public:
 				if (key < curr_cp->key) curr_cp->left = tree_copy_root;
 				else                    curr_cp->right = tree_copy_root;
 				tree_copy_root = curr_cp;
-				if (connection_point == original_to_be_deleted)
+				if (connection_point == original_to_be_deleted) {
 					tree_copy_root->key = to_be_deleted->key;
+					tree_copy_root->value = to_be_deleted->value;
+				}
 				curr_cp = node_new_copy(tree_copy_root->left);
 				ht_insert(tdata->ht, &tree_copy_root->left->left, curr_cp->left);
 				ht_insert(tdata->ht, &tree_copy_root->left->right, curr_cp->right);
@@ -757,8 +762,10 @@ public:
 				if (key < curr_cp->key) curr_cp->left = tree_copy_root;
 				else                    curr_cp->right = tree_copy_root;
 				tree_copy_root = curr_cp;
-				if (connection_point == original_to_be_deleted)
+				if (connection_point == original_to_be_deleted) {
 					tree_copy_root->key = to_be_deleted->key;
+					tree_copy_root->value = to_be_deleted->value;
+				}
 				curr_cp = node_new_copy(tree_copy_root->right);
 				ht_insert(tdata->ht, &tree_copy_root->right->left, curr_cp->left);
 				ht_insert(tdata->ht, &tree_copy_root->right->right, curr_cp->right);
@@ -799,13 +806,15 @@ public:
 			ht_insert(tdata->ht, &connection_point->left, curr_cp->left);
 			ht_insert(tdata->ht, &connection_point->right, curr_cp->right);
 	
-			// Change the height of current node's copy + the key if needed.
+			// Change the height of current node's copy + the key and value if needed.
 			curr_cp->height = new_height;
 			if (key < curr_cp->key) curr_cp->left = tree_copy_root;
 			else                    curr_cp->right = tree_copy_root;
 			tree_copy_root = curr_cp;
-			if (connection_point == original_to_be_deleted)
+			if (connection_point == original_to_be_deleted) {
 				tree_copy_root->key = to_be_deleted->key;
+				tree_copy_root->value = to_be_deleted->value;
+			}
 	
 			// Move one level up
 			*connpoint_stack_index = stack_top;
@@ -827,6 +836,7 @@ public:
 				tree_copy_root = curr_cp;
 			}
 			tree_copy_root->key = to_be_deleted->key;
+			tree_copy_root->value = to_be_deleted->value;
 			connection_point = to_be_deleted_stack_index > 0 ? 
 			                             node_stack[to_be_deleted_stack_index - 1] :
 			                             NULL;

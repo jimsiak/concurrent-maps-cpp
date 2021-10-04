@@ -86,8 +86,8 @@ public:
 	//> So we have to cast `void *` to `node_t *` inside the implementation of
 	//> each function.
 
-	virtual bool traverse_with_stack(const K& key, void **stack,
-	                                 int *stack_indexes, int *stack_top) { return false; };
+	virtual const V traverse_with_stack(const K& key, void **stack,
+	                                    int *stack_indexes, int *stack_top) { return NO_VALUE; };
 	virtual void install_copy(void *connpoint, void *privcopy, int *, int) {};
 	virtual void validate_copy(void **node_stack, int *node_stack_indexes,
 	                           int stack_top) {};

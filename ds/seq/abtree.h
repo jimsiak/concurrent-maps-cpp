@@ -703,8 +703,8 @@ public:
 	/**
 	 * RCU-HTM adapting methods.
 	 **/
-	bool traverse_with_stack(const K& key, void **stack,
-	                         int *stack_indexes, int *stack_top)
+	const V traverse_with_stack(const K& key, void **stack,
+	                            int *stack_indexes, int *stack_top)
 	{
 		node_t **node_stack = (node_t **)stack;
 		int index;
@@ -712,7 +712,7 @@ public:
 
 		*stack_top = -1;
 		n = root;
-		if (!n) return false;
+		if (!n) return this->NO_VALUE;
 
 		while (!n->leaf) {
 			index = n->search(key);
@@ -726,7 +726,10 @@ public:
 		stack_indexes[*stack_top] = index;
 
 		index = stack_indexes[*stack_top];
-		return (*stack_top >= 0 && index < n->no_keys && n->keys[index] == key);
+		if (*stack_top >= 0 && index < n->no_keys && n->keys[index] == key)
+			return n->children[index+1];
+		else
+			return this->NO_VALUE;
 	}
 	void install_copy(void *connpoint_, void *privcopy,
 	                  int *node_stack_indexes, int connpoint_stack_index)

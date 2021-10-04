@@ -93,7 +93,7 @@ private:
 		return false;
 	}
 
-	int insert_helper(const K& key, const V& val)
+	const V insert_helper(const K& key, const V& val)
 	{
 		void *node_stack[MAX_STACK_LEN];
 		void *connection_point, *tree_cp_root;
@@ -106,9 +106,9 @@ private:
 			ht_reset(tdata->ht);
 	
 			//> Asynchronized traversal. If key is there we can safely return.
-			bool found = seq_ds->traverse_with_stack(key, node_stack,
-			                                         node_stack_indexes, &stack_top);
-			if (found) return 0;
+			const V ret = seq_ds->traverse_with_stack(key, node_stack,
+			                                          node_stack_indexes, &stack_top);
+			if (ret != this->NO_VALUE) return ret;
 
 			connection_point = seq_ds->insert_with_copy(key, val, 
 			                                  node_stack, node_stack_indexes, stack_top,
@@ -118,18 +118,18 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
-			if (installed) return 1;
+			if (installed) return this->NO_VALUE;
 		}
 
 		//> ...otherwise fallback to the coarse-grained RCU
 		ht_reset(tdata->ht);
 		tdata->lacqs++;
 		pthread_spin_lock(&updaters_lock);
-		bool found = seq_ds->traverse_with_stack(key, node_stack,
-		                                        node_stack_indexes, &stack_top);
-		if (found) {
+		const V ret = seq_ds->traverse_with_stack(key, node_stack,
+		                                          node_stack_indexes, &stack_top);
+		if (ret != this->NO_VALUE) {
 			pthread_spin_unlock(&updaters_lock);
-			return 0;
+			return ret;
 		}
 		connection_point = seq_ds->insert_with_copy(key, val, 
 		                                  node_stack, node_stack_indexes, stack_top,
@@ -139,10 +139,10 @@ private:
 		                     node_stack_indexes,
 		                     connection_point_stack_index);
 		pthread_spin_unlock(&updaters_lock);
-		return 1;
+		return this->NO_VALUE;
 	}
 
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		void *node_stack[MAX_STACK_LEN];
 		void *connection_point, *tree_cp_root;
@@ -155,9 +155,9 @@ private:
 			ht_reset(tdata->ht);
 	
 			//> Asynchronized traversal. If key is there we can safely return.
-			bool found = seq_ds->traverse_with_stack(key, node_stack,
-			                                         node_stack_indexes, &stack_top);
-			if (!found) return 0;
+			const V ret = seq_ds->traverse_with_stack(key, node_stack,
+			                                          node_stack_indexes, &stack_top);
+			if (ret == this->NO_VALUE) return this->NO_VALUE;
 
 			connection_point = seq_ds->delete_with_copy(key,
 			                                  node_stack, node_stack_indexes, &stack_top,
@@ -167,18 +167,18 @@ private:
 			                                           node_stack, node_stack_indexes,
 			                                           stack_top,
 			                                           connection_point_stack_index);
-			if (installed) return 1;
+			if (installed) return ret;
 		}
 
 		//> ...otherwise fallback to the coarse-grained RCU
 		ht_reset(tdata->ht);
 		tdata->lacqs++;
 		pthread_spin_lock(&updaters_lock);
-		bool found = seq_ds->traverse_with_stack(key, node_stack,
-		                                        node_stack_indexes, &stack_top);
-		if (!found) {
+		const V ret = seq_ds->traverse_with_stack(key, node_stack,
+		                                          node_stack_indexes, &stack_top);
+		if (ret == this->NO_VALUE) {
 			pthread_spin_unlock(&updaters_lock);
-			return 0;
+			return this->NO_VALUE;
 		}
 		connection_point = seq_ds->delete_with_copy(key,
 		                                  node_stack, node_stack_indexes, &stack_top,
@@ -188,7 +188,7 @@ private:
 		                     node_stack_indexes,
 		                     connection_point_stack_index);
 		pthread_spin_unlock(&updaters_lock);
-		return 1;
+		return ret;
 	}
 
 	void rebalance_helper(const K& key)
@@ -274,23 +274,17 @@ const V RCU_HTM_FUNCT::insert(const int tid, const K& key, const V& val)
 RCU_HTM_TEMPL
 const V RCU_HTM_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-
-	if (seq_ds->is_abtree() && ret == 1) rebalance_helper(key);
-
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	const V ret = insert_helper(key, val);
+	if (seq_ds->is_abtree() && ret == this->NO_VALUE) rebalance_helper(key);
+	return ret;
 }
 
 RCU_HTM_TEMPL
 const std::pair<V,bool> RCU_HTM_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-
-	if (seq_ds->is_abtree() && ret == 1) rebalance_helper(key);
-
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	if (seq_ds->is_abtree() && ret != this->NO_VALUE) rebalance_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 RCU_HTM_TEMPL

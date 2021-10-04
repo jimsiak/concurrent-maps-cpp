@@ -65,8 +65,8 @@ public:
 	/**
 	 * RCU-HTM adapting methods.
 	 **/
-	bool traverse_with_stack(const K& key, void **stack,
-	                         int *stack_indexes, int *stack_top)
+	const V traverse_with_stack(const K& key, void **stack,
+	                            int *stack_indexes, int *stack_top)
 	{
 		node_t *parent, *leaf;
 		node_t **node_stack = (node_t **)stack;
@@ -84,8 +84,10 @@ public:
 			leaf = (key < leaf->key) ? leaf->left : leaf->right;
 		}
 
-		if (*stack_top < 0) return false;
-		else return (node_stack[*stack_top]->key == key);
+		if (*stack_top >= 0 && node_stack[*stack_top]->key == key)
+			return node_stack[*stack_top]->value;
+		else
+			return this->NO_VALUE;
 	}
 	void install_copy(void *connpoint, void *privcopy,
 	                  int *node_stack_indexes, int connpoint_stack_index)
@@ -217,6 +219,7 @@ public:
 				tree_copy_root = curr_cp;
 			}
 			tree_copy_root->key = to_be_deleted->key;
+			tree_copy_root->value = to_be_deleted->value;
 			connection_point = to_be_deleted_stack_index > 0 ? 
 			                            node_stack[to_be_deleted_stack_index - 1] :
 			                            NULL;

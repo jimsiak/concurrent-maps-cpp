@@ -583,15 +583,15 @@ public:
 		}
 	}
 
-	bool traverse_with_stack(const K& key, node_t **node_stack,
-	                         int *node_stack_indexes, int *node_stack_top)
+	const V traverse_with_stack(const K& key, node_t **node_stack,
+	                            int *node_stack_indexes, int *node_stack_top)
 	{
 		return traverse_with_stack(key, (void **)node_stack,
 		                           node_stack_indexes, node_stack_top);
 	}
 
-	bool traverse_with_stack(const K& key, void **node_stack_,
-	                         int *node_stack_indexes, int *node_stack_top)
+	const V traverse_with_stack(const K& key, void **node_stack_,
+	                            int *node_stack_indexes, int *node_stack_top)
 	{
 		node_t **node_stack = (node_t **)node_stack_;
 		int index;
@@ -612,11 +612,10 @@ public:
 		node_stack_indexes[*node_stack_top] = index;
 
 		index = node_stack_indexes[*node_stack_top];
-		if (*node_stack_top >= 0 && index < n->no_keys &&
-		        n->keys[index] == key)
-			return true;
-		return false;
-
+		if (*node_stack_top >= 0 && index < n->no_keys
+		                         && n->keys[index] == key)
+			return n->children[index+1];
+		return this->NO_VALUE;
 	}
 
 	/**
