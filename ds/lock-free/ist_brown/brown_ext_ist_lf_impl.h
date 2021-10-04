@@ -279,126 +279,6 @@ private:
 		Erase
 	};
 
-	class IdealBuilder {
-	private:
-		size_t initNumKeys;
-		ist_brown *ist;
-		size_t depth;
-		KVPair *pairs;
-		size_t pairsAdded;
-		casword_t tree;
-		
-		Node *build(const int tid, KVPair *pset, int psetSize, const size_t currDepth,
-		            casword_t volatile *constructingSubtree, bool parallelizeWithOMP = false) {
-			// bail early if tree was already constructed by someone else
-			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
-				return NODE_TO_CASWORD(NULL); 
-
-			//> All key-value pairs can fit in a leaf
-			if (psetSize <= MAX_ACCEPTABLE_LEAF_SIZE)
-				return ist->createLeaf(tid, pset, psetSize);
-
-			//> remainder is the number of children with childSize+1 pair subsets
-			//> (the other (numChildren - remainder) children have childSize pair subsets)
-			double numChildrenD = std::sqrt((double) psetSize);
-			size_t numChildren = (size_t) std::ceil(numChildrenD);
-			size_t childSize = psetSize / (size_t) numChildren;
-			size_t remainder = psetSize % numChildren;
-
-			Node *node = NULL;
-			#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
-			if (currDepth <= 1) node = ist->createMultiCounterNode(tid, numChildren);
-			else                node = ist->createNode(tid, numChildren);
-			#else
-			node = ist->createNode(tid, numChildren);
-			#endif
-			node->initSize = psetSize;
-
-			if (parallelizeWithOMP) {
-				#pragma omp parallel
-				{
-					#ifdef _OPENMP
-					auto sub_thread_id = omp_get_thread_num();
-					#else
-					auto sub_thread_id = tid; // it will just be this main thread
-					#endif
-					ist->initThread(sub_thread_id);
-					
-					#pragma omp for
-					for (size_t i=0;i<numChildren;++i) {
-						int sz = childSize + (i < remainder);
-						KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
-						auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
-						
-						*node->ptrAddr(i) = NODE_TO_CASWORD(child);
-						if (i > 0) node->key(i-1) = childSet[0].k;
-					}
-				}
-			} else {
-				KVPair *childSet = pset;
-				for (size_t i=0; i<numChildren; ++i) {
-					int sz = childSize + (i < remainder);
-					Node *child = build(tid, childSet, sz, 1+currDepth, constructingSubtree);
-					
-					*node->ptrAddr(i) = NODE_TO_CASWORD(child);
-					if (i > 0) {
-						assert(child == NODE_TO_CASWORD(NULL) || child->degree > 1);
-						node->key(i-1) = childSet[0].k;
-					}
-					childSet += sz;
-				}
-			}
-			node->minKey = node->key(0);
-			node->maxKey = node->key(node->degree-2);
-			return node;
-		}
-
-	public:
-		IdealBuilder(ist_brown *ist, const size_t initNumKeys, const size_t depth) {
-			this->initNumKeys = initNumKeys;
-			this->ist = ist;
-			this->depth = depth;
-			this->pairs = new KVPair[initNumKeys];
-			this->pairsAdded = 0;
-			this->tree = (casword_t)NULL;
-		}
-		~IdealBuilder() {
-			delete[] pairs;
-		}
-		void addKV(const int tid, const K& key, const V& value) {
-			pairs[pairsAdded++] = {key, value};
-			assert(pairsAdded <= initNumKeys);
-		}
-		casword_t getCASWord(const int tid, casword_t volatile *constructingSubtree)
-		{
-			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
-				return NODE_TO_CASWORD(NULL);
-
-			assert(pairsAdded == initNumKeys);
-			if (!tree) {
-				if (pairsAdded == 0)
-					tree = EMPTY_VAL_TO_CASWORD;
-				else if (pairsAdded == 1)
-					tree = KVPAIR_TO_CASWORD(ist->createKVPair(tid, pairs[0].k, pairs[0].v));
-				else
-					tree = NODE_TO_CASWORD(build(tid, pairs, pairsAdded, depth, constructingSubtree));
-			}
-
-			if (*constructingSubtree != NODE_TO_CASWORD(NULL)) {
-				ist->freeSubtree(tid, tree, false);
-				return NODE_TO_CASWORD(NULL);
-			}
-
-			return tree;
-		}
-		
-		K getMinKey() {
-			assert(pairsAdded > 0);
-			return pairs[0].k;
-		}
-	};
-
-
 private:
 	RandomFNV1A threadRNGs[88];
 	dcssProvider<void* /* unused */> * const prov;
@@ -541,8 +421,6 @@ private:
 		if (foundKey == key) {
 			if (t == InsertReplace) {
 				newWord = VAL_TO_CASWORD(val);
-				// note: should NOT count towards changeSum, because
-				// it cannot affect the complexity of operations
 				if (foundVal != this->NO_VALUE) affectsChangeSum = false; 
 			} else if (t == InsertIfAbsent) {
 				if (foundVal != this->NO_VALUE) return 3;
@@ -647,7 +525,7 @@ private:
 		//> in practice, the depth is probably less than 10 even for many
 		//> billions of keys. max is technically nthreads + O(log log n),
 		//> but this requires an astronomically unlikely event.
-		const int MAX_PATH_LENGTH = 64; 
+		const int MAX_PATH_LENGTH = 20;
 		Node *path[MAX_PATH_LENGTH]; // stack to save the path
 		Node *node;
 		int pathLength;
@@ -813,6 +691,7 @@ private:
 			RebuildOperation *op = CASWORD_TO_REBUILDOP(ptr);
 			std::cout << "  RebuildOP: (" << op->rebuildRoot << ", "
 			          << op->parent << ", " << op->index << ")\n";
+			print_rec((casword_t)op->rebuildRoot, level+1);
 		} else {
 			V val = CASWORD_TO_VAL(ptr);
 			std::cout << "  Value: (" << val << ")\n";
@@ -828,6 +707,127 @@ private:
 	/*************************************************************************/
 	/*                         Rebuild operations                            */
 	/*************************************************************************/
+	class IdealBuilder {
+	private:
+		size_t initNumKeys;
+		ist_brown *ist;
+		size_t depth;
+		KVPair *pairs;
+		size_t pairsAdded;
+		casword_t tree;
+		
+		Node *build(const int tid, KVPair *pset, int psetSize, const size_t currDepth,
+		            casword_t volatile *constructingSubtree, bool parallelizeWithOMP = false) {
+			// bail early if tree was already constructed by someone else
+			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
+				return NODE_TO_CASWORD(NULL); 
+
+			//> All key-value pairs can fit in a leaf
+			if (psetSize <= MAX_ACCEPTABLE_LEAF_SIZE)
+				return ist->createLeaf(tid, pset, psetSize);
+
+			//> remainder is the number of children with childSize+1 pair subsets
+			//> (the other (numChildren - remainder) children have childSize pair subsets)
+			double numChildrenD = std::sqrt((double) psetSize);
+			size_t numChildren = (size_t) std::ceil(numChildrenD);
+			size_t childSize = psetSize / (size_t) numChildren;
+			size_t remainder = psetSize % numChildren;
+
+			Node *node = NULL;
+			#ifndef IST_DISABLE_MULTICOUNTER_AT_ROOT
+			if (currDepth <= 1) node = ist->createMultiCounterNode(tid, numChildren);
+			else                node = ist->createNode(tid, numChildren);
+			#else
+			node = ist->createNode(tid, numChildren);
+			#endif
+			node->initSize = psetSize;
+
+			if (parallelizeWithOMP) {
+				#pragma omp parallel
+				{
+					#ifdef _OPENMP
+					auto sub_thread_id = omp_get_thread_num();
+					#else
+					auto sub_thread_id = tid; // it will just be this main thread
+					#endif
+					ist->initThread(sub_thread_id);
+					
+					#pragma omp for
+					for (size_t i=0;i<numChildren;++i) {
+						int sz = childSize + (i < remainder);
+						KVPair *childSet = pset + i*sz + (i >= remainder ? remainder : 0);
+						auto child = build(sub_thread_id, childSet, sz, 1+currDepth, constructingSubtree);
+						
+						*node->ptrAddr(i) = NODE_TO_CASWORD(child);
+						if (i > 0) node->key(i-1) = childSet[0].k;
+					}
+				}
+			} else {
+				KVPair *childSet = pset;
+				for (size_t i=0; i<numChildren; ++i) {
+					int sz = childSize + (i < remainder);
+					Node *child = build(tid, childSet, sz, 1+currDepth, constructingSubtree);
+					
+					*node->ptrAddr(i) = NODE_TO_CASWORD(child);
+					if (i > 0) {
+						assert(child == NODE_TO_CASWORD(NULL) || child->degree > 1);
+						node->key(i-1) = childSet[0].k;
+					}
+					childSet += sz;
+				}
+			}
+			node->minKey = node->key(0);
+			node->maxKey = node->key(node->degree-2);
+			return node;
+		}
+
+	public:
+		IdealBuilder(ist_brown *ist, const size_t initNumKeys, const size_t depth) {
+			this->initNumKeys = initNumKeys;
+			this->ist = ist;
+			this->depth = depth;
+			this->pairs = new KVPair[initNumKeys];
+			this->pairsAdded = 0;
+			this->tree = (casword_t)NULL;
+		}
+		~IdealBuilder() {
+			delete[] pairs;
+		}
+		void addKV(const int tid, const K& key, const V& value) {
+			pairs[pairsAdded++] = {key, value};
+			if (pairsAdded > initNumKeys) std::cout << "SKAAAATA1 " << pairsAdded << " " << initNumKeys << "\n";
+			assert(pairsAdded <= initNumKeys);
+		}
+		casword_t getCASWord(const int tid, casword_t volatile *constructingSubtree)
+		{
+			if (*constructingSubtree != NODE_TO_CASWORD(NULL))
+				return NODE_TO_CASWORD(NULL);
+
+			if (pairsAdded != initNumKeys) std::cout << "SKAAAATA2 " << pairsAdded << " " << initNumKeys << "\n";
+			assert(pairsAdded == initNumKeys);
+			if (!tree) {
+				if (pairsAdded == 0)
+					tree = EMPTY_VAL_TO_CASWORD;
+				else if (pairsAdded == 1)
+					tree = KVPAIR_TO_CASWORD(ist->createKVPair(tid, pairs[0].k, pairs[0].v));
+				else
+					tree = NODE_TO_CASWORD(build(tid, pairs, pairsAdded, depth, constructingSubtree));
+			}
+
+			if (*constructingSubtree != NODE_TO_CASWORD(NULL)) {
+				ist->freeSubtree(tid, tree, false);
+				return NODE_TO_CASWORD(NULL);
+			}
+
+			return tree;
+		}
+		
+		K getMinKey() {
+			assert(pairsAdded > 0);
+			return pairs[0].k;
+		}
+	};
+
 	struct RebuildOperation {
 		Node *rebuildRoot;
 		Node *parent;
@@ -868,6 +868,10 @@ private:
 		casword_t oldWord = REBUILDOP_TO_CASWORD(op);
 
 		casword_t newWord = createIdealConcurrent(tid, op, keyCount);
+//		IdealBuilder b (this, keyCount, op->depth);
+//		casword_t dummy = NODE_TO_CASWORD(NULL);
+//		addKVPairs(tid, NODE_TO_CASWORD(op->rebuildRoot), &b);
+//		casword_t newWord = b.getCASWord(tid, &dummy);
 
 		// someone else already *finished* helping
 		// TODO: help to free old subtree?
@@ -902,15 +906,15 @@ private:
 				//      *if* it becomes an issue then helpFreeSubtree or something like it should fix the problem.
 
 				// try to claim the NEW subtree located at op->newWord for reclamation
-				if (op->newRoot != NODE_TO_CASWORD(NULL)
-				    && __sync_bool_compare_and_swap(&op->newRoot, newWord, EMPTY_VAL_TO_CASWORD)) {
-					freeSubtree(tid, newWord, true);
-					// note that other threads might be trying to help our rebuildop,
-					// and so might be accessing the subtree at newWord.
-					// so, we use retire rather than deallocate.
-				}
-				// otherwise, someone else reclaimed the NEW subtree
-				assert(op->newRoot == EMPTY_VAL_TO_CASWORD);
+//				if (op->newRoot != NODE_TO_CASWORD(NULL)
+//				    && __sync_bool_compare_and_swap(&op->newRoot, newWord, EMPTY_VAL_TO_CASWORD)) {
+//					freeSubtree(tid, newWord, true);
+//					// note that other threads might be trying to help our rebuildop,
+//					// and so might be accessing the subtree at newWord.
+//					// so, we use retire rather than deallocate.
+//				}
+//				// otherwise, someone else reclaimed the NEW subtree
+//				assert(op->newRoot == EMPTY_VAL_TO_CASWORD);
 			} else {
 				assert(result == DCSS_FAILED_ADDR2);
 			}
@@ -1193,16 +1197,14 @@ private:
 		// construct the subtree
 		addKVPairsSubset(tid, op, op->rebuildRoot, &numKeysToSkip, &numKeysToAdd,
 		                 op->depth, &b, parent->ptrAddr(ix)); 
-		if (parent->ptr(ix) != NODE_TO_CASWORD(NULL))
-			return;
+		if (parent->ptr(ix) != NODE_TO_CASWORD(NULL)) return;
 		
 		auto ptr = b.getCASWord(tid, parent->ptrAddr(ix));
 		// if we didn't build a tree, because someone else already replaced this
 		// subtree, then we just stop here (just avoids an unnecessary cas below
 		// in this case; apart from this cas, which will fail, the behaviour is no
 		// different whether we return here or execute the following...)
-		if (NODE_TO_CASWORD(NULL) == ptr)
-			return; 
+		if (NODE_TO_CASWORD(NULL) == ptr) return; 
 		
 		// try to attach new subtree
 		if (ix > 0) *parent->keyAddr(ix-1) = b.getMinKey();
