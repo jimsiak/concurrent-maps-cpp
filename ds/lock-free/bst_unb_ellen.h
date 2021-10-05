@@ -23,7 +23,7 @@
 #define ELLEN_INF2 (ELLEN_MAX_KEY)
 #define ELLEN_INF1 (ELLEN_MAX_KEY - 1)
 
-__thread void *last_result_threadlocal; // FIXME is this OK to be here?
+static __thread void *last_result_threadlocal; // FIXME is this OK to be here?
 
 template <typename K, typename V>
 class bst_unb_ellen : public Map<K,V> {

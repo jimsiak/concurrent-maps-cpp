@@ -27,7 +27,7 @@
 #define UNFLAG(ptr)  ((node_t *)((uint64_t)(ptr) & 0xfffffffffffffffe))
 #define ADDRESS(ptr) ((node_t *)((uint64_t)(ptr) & 0xfffffffffffffffc))
 
-__thread void* seek_record_threadlocal; //FIXME is this OK to be here??
+static __thread void* seek_record_threadlocal; //FIXME is this OK to be here??
 
 template <typename K, typename V>
 class bst_unb_natarajan: public Map<K,V> {

@@ -30,7 +30,7 @@ typedef struct {
 	void *entries[HT_LEN][HT_MAX_BUCKET_LEN * 2];
 } ht_t;
 
-ht_t *ht_new()
+static ht_t *ht_new()
 {
 	int i;
 	ht_t *ret;
@@ -41,12 +41,12 @@ ht_t *ht_new()
 	return ret;
 }
 
-void ht_reset(ht_t *ht)
+static void ht_reset(ht_t *ht)
 {
 	memset(&ht->bucket_next_index[0], 0, sizeof(ht->bucket_next_index));
 }
 
-void ht_insert(ht_t *ht, void *key, void *value)
+static void ht_insert(ht_t *ht, void *key, void *value)
 {
 	int bucket = HT_GET_BUCKET(key);
 	unsigned short bucket_index = ht->bucket_next_index[bucket];
@@ -59,7 +59,7 @@ void ht_insert(ht_t *ht, void *key, void *value)
 	ht->entries[bucket][bucket_index+1] = value;
 }
 
-void *ht_get(ht_t *ht, void *key)
+static void *ht_get(ht_t *ht, void *key)
 {
 	int bucket = HT_GET_BUCKET(key);
 	int i;
@@ -71,7 +71,7 @@ void *ht_get(ht_t *ht, void *key)
 	return NULL;
 }
 
-void ht_print(ht_t *ht)
+static void ht_print(ht_t *ht)
 {
 	int i, j;
 
@@ -124,4 +124,4 @@ static inline void tdata_add(tdata_t *d1, tdata_t *d2, tdata_t *dst)
 }
 /******************************************************************************/
 
-__thread tdata_t *tdata;
+static __thread tdata_t *tdata;
