@@ -142,13 +142,13 @@ private:
 		return ret;
 	}
 
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		int index;
 		node_t *n = root;
 
 		//> Empty tree.
-		if (!n) return 0;
+		if (!n) return this->NO_VALUE;
 
 		while (!n->leaf) {
 			index = n->search(key);
@@ -156,7 +156,7 @@ private:
 			n = (node_t *)n->children[index];
 		}
 		index = n->search(key);
-		return (n->keys[index] == key);
+		return (V)n->children[index+1];
 	}
 
 	void traverse_with_stack(const K& key,
@@ -1185,14 +1185,15 @@ public:
 ABTREE_TEMPL
 bool ABTREE_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 ABTREE_TEMPL
 const std::pair<V,bool> ABTREE_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 ABTREE_TEMPL

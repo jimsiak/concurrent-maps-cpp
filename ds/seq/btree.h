@@ -13,11 +13,13 @@
 #include "../map_if.h"
 #include "Log.h"
 
-#define BTREE_ORDER 8
 #define BTREE_MAX_KEY 99999999999LLU
 
 template <typename K, typename V>
 class btree : public Map<K,V> {
+private:
+	static const unsigned int NODE_ORDER = 8;
+
 public:
 	btree(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	  : Map<K,V>(_NO_KEY, _NO_VALUE)
@@ -51,8 +53,8 @@ private:
 		bool leaf;
 	
 		int no_keys;
-		K keys[2*BTREE_ORDER];
-		__attribute__((aligned(16))) void *children[2*BTREE_ORDER + 1];
+		K keys[2*NODE_ORDER];
+		__attribute__((aligned(16))) void *children[2*NODE_ORDER + 1];
 
 		node_t (bool leaf) {
 			this->no_keys = 0;
@@ -62,9 +64,9 @@ private:
 		node_t *copy() {
 			node_t *newn = new node_t(this->leaf);
 			newn->no_keys = this->no_keys;
-			for (int i=0; i < 2*BTREE_ORDER; i++)
+			for (int i=0; i < 2*NODE_ORDER; i++)
 				newn->keys[i] = this->keys[i];
-			for (int i=0; i < 2*BTREE_ORDER + 1; i++)
+			for (int i=0; i < 2*NODE_ORDER + 1; i++)
 				newn->children[i] = this->children[i];
 			return newn;
 		}
@@ -78,8 +80,8 @@ private:
 		
 		/**
 		 * Distributes the keys of 'this' on the two nodes and also adds 'key'.
-		 * The distribution is done so as 'this' contains BTREE_ORDER + 1 keys
-		 * and 'rnode' contains BTREE_ORDER keys.
+		 * The distribution is done so as 'this' contains NODE_ORDER + 1 keys
+		 * and 'rnode' contains NODE_ORDER keys.
 		 * CAUTION: rnode->children[0] is left NULL.
 		 **/
 		void distribute_keys(node_t *rnode, const K& key,
@@ -87,21 +89,21 @@ private:
 		{
 			int i, mid;
 		
-			mid = BTREE_ORDER;
-			if (index > BTREE_ORDER) mid++;
+			mid = NODE_ORDER;
+			if (index > NODE_ORDER) mid++;
 		
 			//> Move half of the keys on the new node.
-			for (i = mid; i < 2 * BTREE_ORDER; i++) {
+			for (i = mid; i < 2 * NODE_ORDER; i++) {
 				rnode->keys[i - mid] = this->keys[i];
 				rnode->children[i - mid] = this->children[i];
 			}
 			rnode->children[i - mid] = this->children[i];
 		
 			this->no_keys = mid;
-			rnode->no_keys = 2 * BTREE_ORDER - mid;
+			rnode->no_keys = 2 * NODE_ORDER - mid;
 		
 			//> Insert the new key in the appropriate node.
-			if (index > BTREE_ORDER) rnode->insert_index(index - mid, key, ptr);
+			if (index > NODE_ORDER) rnode->insert_index(index - mid, key, ptr);
 			else this->insert_index(index, key, ptr);
 		}
 
@@ -112,7 +114,7 @@ private:
 			this->distribute_keys(rnode, key, ptr, index);
 		
 			//> This is the key that will be propagated upwards.
-			*key_ret = this->keys[BTREE_ORDER];
+			*key_ret = this->keys[NODE_ORDER];
 		
 			if (!this->leaf) {
 				rnode->children[0] = this->children[this->no_keys];
@@ -170,20 +172,20 @@ private:
 
 private:
 
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		int index;
 		node_t *n = root;
 	
 		//> Empty tree.
-		if (!n) return 0;
+		if (!n) return this->NO_VALUE;
 	
 		while (!n->leaf) {
 			index = n->search(key);
 			n = (node_t *)n->children[index];
 		}
 		index = n->search(key);
-		return (n->keys[index] == key);
+		return (V)n->children[index+1];
 	}
 
 	const V insert_helper(const K& key, const V& val)
@@ -196,7 +198,7 @@ private:
 	
 		//> Route to the appropriate leaf.
 		traverse_with_stack(key, node_stack, node_stack_indexes, &stack_top);
-		if (stack_top >= 0 && node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
+		if (stack_top >= 0 && node_stack_indexes[stack_top] < 2 * NODE_ORDER &&
 		        node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key)
 			return (V)node_stack[stack_top]->children[node_stack_indexes[stack_top] + 1];
 	
@@ -217,7 +219,7 @@ private:
 			index = node_stack_indexes[stack_top];
 	
 			//> No split required.
-			if (n->no_keys < 2 * BTREE_ORDER) {
+			if (n->no_keys < 2 * NODE_ORDER) {
 				n->insert_index(index, key_to_add, ptr_to_add);
 				break;
 			}
@@ -300,7 +302,7 @@ private:
 		//> Left sibling first.
 		if (pindex > 0) {
 			sibling = (node_t *)p->children[pindex - 1];
-			if (sibling->no_keys > BTREE_ORDER) {
+			if (sibling->no_keys > NODE_ORDER) {
 				for (i = c->no_keys-1; i >= 0; i--) c->keys[i+1] = c->keys[i];
 				for (i = c->no_keys; i >= 0; i--) c->children[i+1] = c->children[i];
 				if (!c->leaf) {
@@ -324,7 +326,7 @@ private:
 		//> Right sibling next.
 		if (pindex < p->no_keys) {
 			sibling = (node_t *)p->children[pindex + 1];
-			if (sibling->no_keys > BTREE_ORDER) {
+			if (sibling->no_keys > NODE_ORDER) {
 				if (!c->leaf) {
 					c->keys[c->no_keys] = p->keys[pindex];
 					c->children[c->no_keys+1] = sibling->children[0];
@@ -371,7 +373,7 @@ private:
 			if (node_stack_top == 0) break;
 	
 			//> If current node is at least half-full, we are done.
-			if (cur->no_keys >= BTREE_ORDER)
+			if (cur->no_keys >= NODE_ORDER)
 				break;
 	
 			//> First try to borrow keys from siblings
@@ -427,7 +429,7 @@ private:
 //			int index = node_stack_indexes[node_stack_top];
 //			node_t *n = node_stack[node_stack_top];
 //			if (index >= n->no_keys || key != n->keys[index]) op_is_insert = 1;
-//			else if (index < 2 * BTREE_ORDER && key == n->keys[index]) op_is_insert = 0;
+//			else if (index < 2 * NODE_ORDER && key == n->keys[index]) op_is_insert = 0;
 //		}
 //		
 //	
@@ -477,7 +479,7 @@ private:
 		int i;
 		K cur_min = n->keys[0];
 
-		if (n != root && n->no_keys < BTREE_ORDER)
+		if (n != root && n->no_keys < NODE_ORDER)
 			not_full_nodes++;
 
 		for (i=1; i < n->no_keys; i++)
@@ -664,7 +666,7 @@ public:
 			if (cur_cp_prev) cur_cp->children[index] = cur_cp_prev;
 	
 			//> No split required.
-			if (cur_cp->no_keys < 2 * BTREE_ORDER) {
+			if (cur_cp->no_keys < 2 * NODE_ORDER) {
 				cur_cp->insert_index(index, key_to_add, ptr_to_add);
 				*tree_cp_root = cur_cp;
 				break;
@@ -783,7 +785,7 @@ public:
 			sibling = (node_t *)p->children[pindex - 1];
 			*sibling_left = sibling;
 			ht_insert(tdata->ht, &p->children[pindex-1], sibling);
-			if (sibling->no_keys > BTREE_ORDER) {
+			if (sibling->no_keys > NODE_ORDER) {
 				sibling_cp = sibling->copy();
 				parent_cp = p->copy();
 				for (i=0; i <= sibling_cp->no_keys; i++)
@@ -816,7 +818,7 @@ public:
 			sibling = (node_t *)p->children[pindex + 1];
 			*sibling_right = sibling;
 			ht_insert(tdata->ht, &p->children[pindex+1], sibling);
-			if (sibling->no_keys > BTREE_ORDER) {
+			if (sibling->no_keys > NODE_ORDER) {
 				sibling_cp = sibling->copy();
 				parent_cp = p->copy();
 				for (i=0; i <= sibling_cp->no_keys; i++)
@@ -893,7 +895,7 @@ public:
 			if (stack_top == 0) break;
 	
 			//> If current node is at least half-full, we are done.
-			if (cur_cp->no_keys >= BTREE_ORDER) break;
+			if (cur_cp->no_keys >= NODE_ORDER) break;
 	
 			//> First try to borrow keys from siblings
 			node_t *sibling_left = NULL, *sibling_right = NULL;
@@ -929,14 +931,15 @@ public:
 BTREE_TEMPL
 bool BTREE_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return (ret != this->NO_VALUE);
 }
 
 BTREE_TEMPL
 const std::pair<V,bool> BTREE_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V, bool>(ret, ret != this->NO_VALUE);
 }
 
 BTREE_TEMPL
