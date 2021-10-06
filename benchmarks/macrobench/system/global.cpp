@@ -30,9 +30,6 @@ VLLMan vll_man;
 bool volatile warmup_finish = false;
 bool volatile enable_thread_mem_pool = false;
 pthread_barrier_t warmup_bar;
-#ifndef NOGRAPHITE
-carbon_barrier_t enable_barrier;
-#endif
 
 string g_thr_pinning_policy = "";
 

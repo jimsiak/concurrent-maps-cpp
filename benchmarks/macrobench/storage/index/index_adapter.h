@@ -6,14 +6,9 @@
  */
 #pragma once
 
-#include <limits>
-#include <csignal>
-#include <cstring>
-#include "row.h"
-#include "row_lock.h"
-#include "index_base.h" // for table_t declaration, and parent class inheritance
-
-#include <ctime>
+#include <iomanip>
+#include "table.h"
+#include "index_base.h"
 #include "../../ds/map_factory.h"
 
 /**
@@ -24,17 +19,18 @@ private:
 	Map<KEY_TYPE, VALUE_TYPE> *index;
 
 public:
-	~Index() {
-		std::cout<<"  performing delete"<<std::endl;
-		delete index;
-	}
+	~Index() { delete index; }
 
 	// WARNING: DO NOT OVERLOAD init() WITH NO ARGUMENTS!!!
 	RC init(uint64_t part_cnt, table_t * table) {
 		if (part_cnt != 1) std::cout << "part_cnt != 1 unsupported\n";
-		std::string map_type("abtree");
-		std::string sync_type("rcu-htm");
+		std::string map_type = g_params["data-structure"];
+		std::string sync_type(g_params["sync-type"]);
+		std::cout << "Initiating Map data structure as index for table "
+		          << std::setw(12) << table->get_table_name() << " ... "
+		          << std::flush;
 		index = createMap<KEY_TYPE,VALUE_TYPE>(map_type, sync_type);
+		std::cout << "[ type: " << index->name() << " ]\n";
 		this->table = table;
 		return RCOK;
 	}
@@ -80,13 +76,8 @@ public:
 		return RCOK;
 	}
 
-	void initThread(const int tid) {
-		index->initThread(tid);
-	}
-
-	void deinitThread(const int tid) {
-		index->deinitThread(tid);
-	}
+	void initThread(const int tid) { index->initThread(tid); }
+	void deinitThread(const int tid) { index->deinitThread(tid); }
 
 	size_t getNodeSize() { return 0; }
 	size_t getDescriptorSize() { return 0; }

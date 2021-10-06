@@ -2,28 +2,23 @@ CFLAGS =
 LDFLAGS =
 CC = g++
 
-CFLAGS += -DMEMORY_STATS=if\(1\) -DMEMORY_STATS2=if\(0\)
 CFLAGS += -DMAX_THREADS_POW2=256
 CFLAGS += -DCPU_FREQ_GHZ=2.1 #$(shell ../microbench/experiments/get_cpu_ghz.sh)
 CFLAGS += -g -std=c++14 -O3
-CFLAGS += -fopenmp
 CFLAGS += $(xargs)
 CFLAGS += -Wno-format
 CFLAGS += -DNO_CLEANUP_AFTER_WORKLOAD
 CFLAGS += -mrtm
 CFLAGS += -Wno-write-strings
-CFLAGS += -DNOGRAPHITE=1
 CFLAGS += -DALIGNED_ALLOCATIONS
 CFLAGS += -fno-omit-frame-pointer
 
 ### if you do not have PAPI, comment out these two lines
 #CFLAGS += -DUSE_PAPI
 #LDFLAGS += -lpapi
-#
 #LDFLAGS += -lnuma
 
-workload=TPCC
-#workload=YCSB
+workload ?= TPCC ## TPCC or YCSB
 CFLAGS += -DWORKLOAD=$(workload)
 
 OBJ_DIR = OBJS

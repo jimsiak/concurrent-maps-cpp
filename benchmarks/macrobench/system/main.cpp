@@ -156,9 +156,6 @@ int main(int argc, char* argv[])
 	}
 	warmup_finish = true;
 	pthread_barrier_init( &warmup_bar, NULL, g_thread_cnt );
-#ifndef NOGRAPHITE
-	CarbonBarrierInit(&enable_barrier, g_thread_cnt);
-#endif
 	pthread_barrier_init( &warmup_bar, NULL, g_thread_cnt );
 
 	// spawn and run txns again.

@@ -18,11 +18,14 @@ void print_usage() {
 	printf("\t-GnINT      ; NO_DL\n");
 	printf("\t-GoINT      ; TIMEOUT\n");
 	printf("\t-GlINT      ; DL_LOOP_DETECT\n");
-	
 	printf("\t-GbINT      ; TS_BATCH_ALLOC\n");
 	printf("\t-GuINT      ; TS_BATCH_NUM\n");
-	
 	printf("\t-o STRING   ; output file\n\n");
+
+	printf("\t[Index Data structures]:\n");
+	printf("\t--data-structure=STRING  ; data structure type\n");
+	printf("\t--sync-type=STRING       ; syncronization type\n");
+
 	printf("  [YCSB]:\n");
 	printf("\t-cINT       ; PART_PER_TXN\n");
 	printf("\t-eINT       ; PERC_MULTI_PART\n");
@@ -31,11 +34,13 @@ void print_usage() {
 	printf("\t-zFLOAT     ; ZIPF_THETA\n");
 	printf("\t-sINT       ; SYNTH_TABLE_SIZE\n");
 	printf("\t-RINT       ; REQ_PER_QUERY\n");
-	printf("\t-fINT       ; FIELD_PER_TUPLE\n");
+	printf("\t-fINT       ; FIELD_PER_TUPLE\n\n");
+
 	printf("  [TPCC]:\n");
 	printf("\t-nINT       ; NUM_WH\n");
 	printf("\t-TpFLOAT    ; PERC_PAYMENT\n");
-	printf("\t-TuINT      ; WH_UPDATE\n");
+	printf("\t-TuINT      ; WH_UPDATE\n\n");
+
 	printf("  [TEST]:\n");
 	printf("\t-Ar         ; Test READ_WRITE\n");
 	printf("\t-Ac         ; Test CONFLIT\n");
@@ -47,6 +52,9 @@ void parser(int argc, char * argv[]) {
     g_params["validation_lock"] = VALIDATION_LOCK;
     g_params["pre_abort"] = PRE_ABORT;
     g_params["atomic_timestamp"] = ATOMIC_TIMESTAMP;
+
+	g_params["data-structure"] = "bst-avl-ext";
+	g_params["sync-type"] = "cg-htm";
 
     for (int i = 1; i<argc; i++) {
         //cout<<"argv["<<i<<"]="<<argv[i]<<std::endl;
