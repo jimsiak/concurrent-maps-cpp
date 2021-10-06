@@ -1345,14 +1345,14 @@ private:
 IST_BROWN_TEMPL
 bool IST_BROWN_FUNCT::contains(const int tid, const K& key)
 {
-	V ret = lookup_helper(tid, key);
+	const V ret = lookup_helper(tid, key);
 	return (ret != this->NO_VALUE);
 }
 
 IST_BROWN_TEMPL
 const std::pair<V,bool> IST_BROWN_FUNCT::find(const int tid, const K& key)
 {
-	V ret = lookup_helper(tid, key);
+	const V ret = lookup_helper(tid, key);
 	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 

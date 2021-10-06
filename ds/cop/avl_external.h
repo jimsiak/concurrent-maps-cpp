@@ -217,11 +217,12 @@ private:
 			TX_ABORT(ABORT_VALIDATION_FAILURE);
 	}
 
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		node_t *leaf;
 		tm_begin_ret_t status;
-		int ret, retries = -1;
+		V ret; 
+		int retries = -1;
 	
 	try_from_scratch:
 	
@@ -230,7 +231,8 @@ private:
 			tdata->lacqs++;
 			LOCK(&lock);
 			traverse(key, &leaf);
-			ret = ((leaf != NULL) && (leaf->key == key));
+			if ((leaf != NULL) && (leaf->key == key)) ret = leaf->value;
+			else ret = this->NO_VALUE;
 			UNLOCK(&lock);
 			return ret;
 		}
@@ -252,7 +254,8 @@ private:
 	
 			/* lookup_verify() will abort if verification fails. */
 			lookup_verify(key, leaf);
-			ret = ((leaf != NULL) && (leaf->key == key));
+			if ((leaf != NULL) && (leaf->key == key)) ret = leaf->value;
+			else ret = this->NO_VALUE;
 	
 			TX_END(0);
 		} else {
@@ -695,16 +698,15 @@ private:
 BST_AVL_EXT_COP_TEMPL
 bool BST_AVL_EXT_COP_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
-	return false;
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_AVL_EXT_COP_TEMPL
 const std::pair<V,bool> BST_AVL_EXT_COP_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
-	return std::pair<V,bool>(NULL, false);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_EXT_COP_TEMPL

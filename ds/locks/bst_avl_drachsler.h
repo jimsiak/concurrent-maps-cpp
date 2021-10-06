@@ -26,7 +26,7 @@
 #include "Log.h"
 #include "lock.h"
 
-#define MAX_KEY_DRACHSLER 9999999999
+#define MAX_KEY_DRACHSLER ULLONG_MAX
 #define MIN_KEY_DRACHSLER 0
 
 #define DRACHSLER_MARK(n) ((n)->marked = true)
@@ -120,12 +120,13 @@ private:
 		}
 	}
 	
-	bool lookup_helper(const K& k)
+	const V lookup_helper(const K& k)
 	{
 		node_t *n = search(k);
 		while (n->key > k && n->pred->key >= k) n = n->pred;
 		while (n->key < k && n->succ->key <= k) n = n->succ;
-		return (n->key == k && !DRACHSLER_IS_MARKED(n));
+		if (n->key == k && !DRACHSLER_IS_MARKED(n)) return n->value;
+		else return this->NO_VALUE;
 	}
 
 	/*****************************************************************************/
@@ -628,14 +629,15 @@ private:
 BST_AVL_DRACHSLER_TEMPL
 bool BST_AVL_DRACHSLER_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_AVL_DRACHSLER_TEMPL
 const std::pair<V,bool> BST_AVL_DRACHSLER_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_DRACHSLER_TEMPL

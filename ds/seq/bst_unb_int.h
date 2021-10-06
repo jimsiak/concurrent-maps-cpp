@@ -235,7 +235,7 @@ private:
 	inline void traverse(const K& key, node_t **parent, node_t **leaf);
 	inline void find_successor(node_t *node, node_t **parent, node_t **leaf);
 
-	int lookup_helper(const K& key);
+	const V lookup_helper(const K& key);
 	const V insert_helper(const K& key, const V& value);
 	const V delete_helper(const K& key);
 	int update_helper(const K& key, const V& value);
@@ -253,13 +253,15 @@ private:
 TEMPL
 bool FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 TEMPL
 const std::pair<V,bool> FUNCT::find(const int tid, const K& key)
 {
-	return std::pair<V,bool>(NULL, false);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 TEMPL
@@ -316,11 +318,12 @@ inline void FUNCT::traverse(const K& key, node_t **parent, node_t **leaf)
 }
 
 TEMPL
-int FUNCT::lookup_helper(const K& key)
+const V FUNCT::lookup_helper(const K& key)
 {
 	node_t *parent, *leaf;
 	traverse(key, &parent, &leaf);
-	return (leaf != NULL);
+	if (leaf != NULL) return leaf->value;
+	else return this->NO_VALUE;
 }
 
 TEMPL

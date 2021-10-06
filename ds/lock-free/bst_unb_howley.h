@@ -247,13 +247,14 @@ private:
 		return result;
 	}
 	
-	int lookup_helper(const K& k)
+	const V lookup_helper(const K& k)
 	{
 		node_t *pred, *curr;
 		operation_t *pred_op, *curr_op;
 	
 	    int ret = search(k, &pred, &pred_op, &curr, &curr_op, root);
-		return (ret == FOUND);
+		if (ret == FOUND) return curr->value;
+		else return this->NO_VALUE;
 	}
 
 	int do_insert(const K& k, const V& v, int result, node_t **new_node,
@@ -473,14 +474,15 @@ private:
 BST_UNB_HOWLEY_TEMPL
 bool BST_UNB_HOWLEY_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_UNB_HOWLEY_TEMPL
 const std::pair<V,bool> BST_UNB_HOWLEY_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_HOWLEY_TEMPL

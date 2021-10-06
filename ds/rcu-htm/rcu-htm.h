@@ -108,6 +108,7 @@ private:
 			//> Asynchronized traversal. If key is there we can safely return.
 			const V ret = seq_ds->traverse_with_stack(key, node_stack,
 			                                          node_stack_indexes, &stack_top);
+			assert(stack_top < MAX_STACK_LEN);
 			if (ret != this->NO_VALUE) return ret;
 
 			connection_point = seq_ds->insert_with_copy(key, val, 
@@ -127,6 +128,7 @@ private:
 		pthread_spin_lock(&updaters_lock);
 		const V ret = seq_ds->traverse_with_stack(key, node_stack,
 		                                          node_stack_indexes, &stack_top);
+		assert(stack_top < MAX_STACK_LEN);
 		if (ret != this->NO_VALUE) {
 			pthread_spin_unlock(&updaters_lock);
 			return ret;
@@ -157,6 +159,7 @@ private:
 			//> Asynchronized traversal. If key is there we can safely return.
 			const V ret = seq_ds->traverse_with_stack(key, node_stack,
 			                                          node_stack_indexes, &stack_top);
+			assert(stack_top < MAX_STACK_LEN);
 			if (ret == this->NO_VALUE) return this->NO_VALUE;
 
 			connection_point = seq_ds->delete_with_copy(key,
@@ -176,6 +179,7 @@ private:
 		pthread_spin_lock(&updaters_lock);
 		const V ret = seq_ds->traverse_with_stack(key, node_stack,
 		                                          node_stack_indexes, &stack_top);
+		assert(stack_top < MAX_STACK_LEN);
 		if (ret == this->NO_VALUE) {
 			pthread_spin_unlock(&updaters_lock);
 			return this->NO_VALUE;
@@ -208,6 +212,7 @@ private:
 				seq_ds->traverse_for_rebalance(key, &should_rebalance,
 				                               node_stack, node_stack_indexes,
 				                               &stack_top);
+				assert(stack_top < MAX_STACK_LEN);
 				if (!should_rebalance) goto AGAIN;
 				connection_point = seq_ds->rebalance_with_copy(key,
 				                           node_stack, node_stack_indexes,
@@ -227,6 +232,7 @@ private:
 			seq_ds->traverse_for_rebalance(key, &should_rebalance,
 			                               node_stack, node_stack_indexes,
 			                               &stack_top);
+			assert(stack_top < MAX_STACK_LEN);
 			if (!should_rebalance) {
 				pthread_spin_unlock(&updaters_lock);
 				break;
@@ -292,155 +298,3 @@ bool RCU_HTM_FUNCT::validate()
 {
 	return seq_ds->validate();
 }
-
-
-
-//int btree_update(btree_t *btree, key_t key, void *val, tdata_t *tdata)
-//{
-//	tm_begin_ret_t status;
-//	btree_node_t *node_stack[MAX_STACK_LEN];
-//	btree_node_t *connection_point, *tree_cp_root;
-//	int node_stack_indexes[MAX_STACK_LEN], stack_top, index;
-//	int retries = -1;
-//	int connection_point_stack_index;
-//	int op_is_insert = -1, ret;
-//
-//try_from_scratch:
-//
-//	ht_reset(tdata->ht);
-//
-//	if (++retries >= TX_NUM_RETRIES) {
-//		tdata->lacqs++;
-//		pthread_spin_lock(&btree->lock);
-//		btree_traverse_stack(btree, key, node_stack, node_stack_indexes, &stack_top);
-//		if (op_is_insert == -1) {
-//			if (stack_top < 0)
-//				op_is_insert = 1;
-//			else if (node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
-//			         node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key)
-//				op_is_insert = 0;
-//			else
-//				op_is_insert = 1;
-//		}
-//		if (op_is_insert && stack_top >= 0 && node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
-//		        node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key) {
-//			pthread_spin_unlock(&btree->lock);
-//			return 0;
-//		} else if (!op_is_insert && (stack_top < 0 || 
-//		            node_stack_indexes[stack_top] >= node_stack[stack_top]->no_keys ||
-//		            node_stack[stack_top]->keys[node_stack_indexes[stack_top]] != key)) {
-//			pthread_spin_unlock(&btree->lock);
-//			return 2;
-//		}
-//		if (op_is_insert) {
-//			connection_point = btree_insert_with_copy(key, val, 
-//			                                  node_stack, node_stack_indexes, stack_top,
-//			                                  &tree_cp_root,
-//			                                  &connection_point_stack_index, tdata);
-//			ret = 1;
-//		} else {
-//			connection_point = btree_delete_with_copy(key,
-//			                                  node_stack, node_stack_indexes, stack_top,
-//			                                  &tree_cp_root,
-//			                                  &connection_point_stack_index, tdata);
-//			ret = 3;
-//		}
-//		if (connection_point == NULL) {
-//			btree->root = tree_cp_root;
-//		} else {
-//			index = node_stack_indexes[connection_point_stack_index];
-//			connection_point->children[index] = tree_cp_root;
-//		}
-//		pthread_spin_unlock(&btree->lock);
-//		return ret;
-//	}
-//
-//	//> Asynchronized traversal. If key is there we can safely return.
-//	btree_traverse_stack(btree, key, node_stack, node_stack_indexes, &stack_top);
-//	if (op_is_insert == -1) {
-//		if (stack_top < 0)
-//			op_is_insert = 1;
-//		else if (node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
-//		         node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key)
-//			op_is_insert = 0;
-//		else
-//			op_is_insert = 1;
-//	}
-//	if (op_is_insert && stack_top >= 0 && node_stack_indexes[stack_top] < 2 * BTREE_ORDER &&
-//	        node_stack[stack_top]->keys[node_stack_indexes[stack_top]] == key)
-//		return 0;
-//	else if (!op_is_insert && (stack_top < 0 || 
-//	            node_stack_indexes[stack_top] >= node_stack[stack_top]->no_keys ||
-//	            node_stack[stack_top]->keys[node_stack_indexes[stack_top]] != key))
-//		return 2;
-//
-//	if (op_is_insert) {
-//		connection_point = btree_insert_with_copy(key, val, 
-//		                                  node_stack, node_stack_indexes, stack_top,
-//		                                  &tree_cp_root,
-//		                                  &connection_point_stack_index, tdata);
-//		ret = 1;
-//	} else {
-//		connection_point = btree_delete_with_copy(key,
-//		                                  node_stack, node_stack_indexes, stack_top,
-//		                                  &tree_cp_root,
-//		                                  &connection_point_stack_index, tdata);
-//		ret = 3;
-//	}
-//
-//	int validation_retries = -1;
-//validate_and_connect_copy:
-//
-//	if (++validation_retries >= TX_NUM_RETRIES) goto try_from_scratch;
-//	while (btree->lock != LOCK_FREE) ;
-//
-//	tdata->tx_starts++;
-//	status = TX_BEGIN(0);
-//	if (status == TM_BEGIN_SUCCESS) {
-//		if (btree->lock != LOCK_FREE)
-//			TX_ABORT(ABORT_GL_TAKEN);
-//
-//		//> Validate copy
-//		if (stack_top < 0 && btree->root != NULL)
-//			TX_ABORT(ABORT_VALIDATION_FAILURE);
-//		if (stack_top >= 0 && btree->root != node_stack[0])
-//			TX_ABORT(ABORT_VALIDATION_FAILURE);
-//		int i;
-//		btree_node_t *n1, *n2;
-//		for (i=0; i < stack_top; i++) {
-//			n1 = node_stack[i];
-//			index = node_stack_indexes[i];
-//			n2 = n1->children[index];
-//			if (n2 != node_stack[i+1])
-//				TX_ABORT(ABORT_VALIDATION_FAILURE);
-//		}
-//		int j;
-//		for (i=0; i < HT_LEN; i++) {
-//			for (j=0; j < tdata->ht->bucket_next_index[i]; j+=2) {
-//				btree_node_t **np = tdata->ht->entries[i][j];
-//				btree_node_t  *n  = tdata->ht->entries[i][j+1];
-//				if (*np != n) TX_ABORT(ABORT_VALIDATION_FAILURE);
-//			}
-//		}
-//
-//		// Now let's 'commit' the tree copy onto the original tree.
-//		if (connection_point == NULL) {
-//			btree->root = tree_cp_root;
-//		} else {
-//			index = node_stack_indexes[connection_point_stack_index];
-//			connection_point->children[index] = tree_cp_root;
-//		}
-//		TX_END(0);
-//	} else {
-//		tdata->tx_aborts++;
-//		if (ABORT_IS_EXPLICIT(status) && 
-//		    ABORT_CODE(status) == ABORT_VALIDATION_FAILURE) {
-//			tdata->tx_aborts_explicit_validation++;
-//			goto try_from_scratch;
-//		} else {
-//			goto validate_and_connect_copy;
-//		}
-//	}
-//
-//	return ret;
-//}

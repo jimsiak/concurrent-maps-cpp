@@ -126,11 +126,12 @@ private:
 		}
 	}
 
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		node_t *parent, *leaf;
 		traverse(key, &parent, &leaf);
-		return (leaf != NULL && leaf->key == key);
+		if (leaf != NULL && leaf->key == key) return leaf->value;
+		else return this->NO_VALUE;
 	}
 
 	void insert_rebalance(const K& key, node_t *node_stack[MAX_HEIGHT],
@@ -583,14 +584,15 @@ private:
 BST_RBT_EXT_TEMPL
 bool BST_RBT_EXT_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_RBT_EXT_TEMPL
 const std::pair<V,bool> BST_RBT_EXT_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_RBT_EXT_TEMPL

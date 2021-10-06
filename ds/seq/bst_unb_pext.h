@@ -222,12 +222,13 @@ private:
 		}
 	}
 	
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		node_t *parent, *leaf;
 	
 		traverse(key, &parent, &leaf);
-		return (leaf != NULL && !leaf->marked);
+		if (leaf != NULL && !leaf->marked) return leaf->value;
+		else return this->NO_VALUE;
 	}
 
 	const V insert_helper(const K& key, const V& value)
@@ -388,14 +389,15 @@ private:
 BST_UNB_PEXT_TEMPL
 bool BST_UNB_PEXT_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_UNB_PEXT_TEMPL
 const std::pair<V,bool> BST_UNB_PEXT_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_PEXT_TEMPL

@@ -142,6 +142,7 @@ public:
 
 		// If tree was not empty
 		if (stack_top >= 0) {
+			new_internal->value = this->NO_VALUE;
 			if (key <= leaf->key) {
 				new_internal->left = new node_t(key, value);
 				new_internal->right = leaf;
@@ -200,7 +201,7 @@ private:
 	inline void traverse(const K& key, node_t **gparent, node_t **parent, node_t **leaf);
 	inline void find_successor(node_t *node, node_t **parent, node_t **leaf);
 
-	int lookup_helper(const K& key);
+	const V lookup_helper(const K& key);
 	const V insert_helper(const K& key, const V& value);
 	const V delete_helper(const K& key);
 	int update_helper(const K& key, const V& value);
@@ -225,13 +226,15 @@ private:
 BST_UNB_EXT_TEMPL
 bool BST_UNB_EXT_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_UNB_EXT_TEMPL
 const std::pair<V,bool> BST_UNB_EXT_FUNCT::find(const int tid, const K& key)
 {
-	return std::pair<V,bool>(NULL, false);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_EXT_TEMPL
@@ -290,11 +293,12 @@ inline void BST_UNB_EXT_FUNCT::traverse(const K& key, node_t **gparent,
 }
 
 BST_UNB_EXT_TEMPL
-int BST_UNB_EXT_FUNCT::lookup_helper(const K& key)
+const V BST_UNB_EXT_FUNCT::lookup_helper(const K& key)
 {
 	node_t *gparent, *parent, *leaf;
 	traverse(key, &gparent, &parent, &leaf);
-	return (leaf && leaf->key == key);
+	if (leaf && leaf->key == key) return leaf->value;
+	else return this->NO_VALUE;
 }
 
 BST_UNB_EXT_TEMPL
@@ -311,8 +315,7 @@ const V BST_UNB_EXT_FUNCT::insert_helper(const K& key, const V& value)
 	}
 
 	// Key already in the tree.
-	if (leaf->key == key)
-		return leaf->value;
+	if (leaf->key == key) return leaf->value;
 
 	// Create new internal and leaf nodes.
 	node_t *new_internal = new node_t(key, this->NO_VALUE);

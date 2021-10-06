@@ -511,7 +511,7 @@ const std::pair<V,bool> TREAP::find(const int tid, const K& key)
 {
 	node_external_t *external = traverse(key);
 	int index = external->index_of(key);
-	if (external == NULL || index == -1) return std::pair<V,bool>(NULL, false);
+	if (external == NULL || index == -1) return std::pair<V,bool>(this->NO_VALUE, false);
 	return std::pair<V,bool>(external->values[index], true);
 }
 

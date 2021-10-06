@@ -163,9 +163,10 @@ private:
 		return last_result;
 	}
 
-	int lookup_helper(const K& key) {
+	const V lookup_helper(const K& key) {
 		search_result_t *result = search(key);
-		return (result->l->key == key);
+		if (result->l->key == key) return result->l->value;
+		else return this->NO_VALUE;
 	}
 
 	int cas_child(node_t *parent, node_t *old, node_t *new_node){
@@ -408,14 +409,15 @@ private:
 BST_UNB_ELLEN_TEMPL
 bool BST_UNB_ELLEN_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_UNB_ELLEN_TEMPL
 const std::pair<V,bool> BST_UNB_ELLEN_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_ELLEN_TEMPL

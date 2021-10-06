@@ -157,12 +157,13 @@ private:
 		}
 	}
 	
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		node_t *parent, *leaf;
 	
 		traverse(key, &parent, &leaf);
-		return (leaf != NULL && !IS_MARKED(leaf));
+		if (leaf != NULL && !IS_MARKED(leaf)) return leaf->value;
+		else return this->NO_VALUE;
 	}
 
 	inline void insert_fixup(const K& key, node_t *node_stack[MAX_HEIGHT], int top)
@@ -780,14 +781,15 @@ public:
 BST_AVL_PEXT_TEMPL
 bool BST_AVL_PEXT_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_AVL_PEXT_TEMPL
 const std::pair<V,bool> BST_AVL_PEXT_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_PEXT_TEMPL

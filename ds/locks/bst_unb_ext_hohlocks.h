@@ -95,17 +95,17 @@ private:
 		}
 	}
 	
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		node_t *gparent, *parent, *leaf;
 	
 		traverse(key, &gparent, &parent, &leaf);
-		int ret = (leaf && leaf->key == key);
 		if (leaf) UNLOCK(&leaf->lock);
 		if (parent) UNLOCK(&parent->lock);
 		if (gparent) UNLOCK(&gparent->lock);
 		if (!gparent || !parent) UNLOCK(&root_lock);
-		return ret;
+		if (leaf && leaf->key == key) return leaf->value;
+		else return this->NO_VALUE;
 	}
 	
 	const V insert_helper(const K& key, const V& value)
@@ -302,14 +302,15 @@ private:
 BST_UNB_EXT_HOHLOCKS_TEMPL
 bool BST_UNB_EXT_HOHLOCKS_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V ret = lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_UNB_EXT_HOHLOCKS_TEMPL
 const std::pair<V,bool> BST_UNB_EXT_HOHLOCKS_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_UNB_EXT_HOHLOCKS_TEMPL

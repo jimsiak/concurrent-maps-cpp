@@ -118,7 +118,8 @@ private:
 		}
 	}
 	
-	int attempt_get(const K& key, node_t *node, int dir, long long version)
+	int attempt_get(const K& key, node_t *node, int dir, long long version,
+	                const V& retval)
 	{
 		node_t *child;
 		int next_dir, ret;
@@ -132,8 +133,14 @@ private:
 			if (node->version != version) return RETRY;
 	
 			//> Reached NULL or the node with the specified key.
-			if (child == NULL) return 0;
-			if (key == child->key) return 1;
+			if (child == NULL) {
+				retval = this->NO_VALUE;
+				return 0;
+			}
+			if (key == child->key) {
+				retval = child->value;
+				return 1;
+			}
 	
 			//> Where to go next?
 			next_dir = (key < child->key) ? LEFT : RIGHT;
@@ -143,18 +150,19 @@ private:
 				wait_until_not_changing(child);
 			} else if (child_version != UNLINKED && child == GET_CHILD_DIR(node, dir)) {
 				if (node->version != version) return RETRY;
-				ret = attempt_get(key, child, next_dir, child_version);
+				ret = attempt_get(key, child, next_dir, child_version, retval);
 				if (ret != RETRY) return ret;
 			}
 		}
 	}
 	
-	int lookup_helper(const K& key)
+	const V lookup_helper(const K& key)
 	{
 		int ret;
-		ret = attempt_get(key, root, RIGHT, 0);
+		const V retval;
+		ret = attempt_get(key, root, RIGHT, 0, retval);
 		assert(ret != RETRY);
-		return ret;
+		return retval;
 	}
 
 	/*****************************************************************************/
@@ -865,14 +873,15 @@ private:
 BST_AVL_BRONSON_TEMPL
 bool BST_AVL_BRONSON_FUNCT::contains(const int tid, const K& key)
 {
-	return lookup_helper(key);
+	const V = ret lookup_helper(key);
+	return ret != this->NO_VALUE;
 }
 
 BST_AVL_BRONSON_TEMPL
 const std::pair<V,bool> BST_AVL_BRONSON_FUNCT::find(const int tid, const K& key)
 {
-	int ret = lookup_helper(key);
-	return std::pair<V,bool>(NULL, ret);
+	const V ret = lookup_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_BRONSON_TEMPL
