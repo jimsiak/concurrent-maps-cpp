@@ -88,13 +88,7 @@ public:
 		index->deinitThread(tid);
 	}
 
-	size_t getNodeSize() {
-		return 0;
-	}
-
-	size_t getDescriptorSize() {
-		return 0;
-	}
-
+	size_t getNodeSize() { return 0; }
+	size_t getDescriptorSize() { return 0; }
 	void print_stats(){}
 };
