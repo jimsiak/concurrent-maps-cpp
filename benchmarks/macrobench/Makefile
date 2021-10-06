@@ -18,8 +18,8 @@ CFLAGS += -fno-omit-frame-pointer
 #LDFLAGS += -lpapi
 #LDFLAGS += -lnuma
 
-workload ?= TPCC ## TPCC or YCSB
-CFLAGS += -DWORKLOAD=$(workload)
+WORKLOAD ?= TPCC ## TPCC or YCSB
+CFLAGS += -DWORKLOAD=$(WORKLOAD)
 
 OBJ_DIR = OBJS
 SRC_DIRS = ./ ./benchmarks/ ./concurrency_control/ ./storage/ ./storage/index/ ./system/ 
@@ -35,9 +35,9 @@ CPPS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)*.cpp))
 OBJS = $(foreach obj, $(CPPS:.cpp=.o), $(OBJ_DIR)/$(obj))
 dir_guard=@mkdir -p $(@D)
 
-all: x.macrobench.$(workload)
+all: x.macrobench.$(WORKLOAD)
 
-x.macrobench.$(workload): $(OBJS)
+x.macrobench.$(WORKLOAD): $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: %.cpp
