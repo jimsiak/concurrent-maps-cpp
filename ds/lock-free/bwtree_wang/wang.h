@@ -71,7 +71,7 @@ using NodeID = uint64_t;
 
 // This could not be set as a macro since we will change the flag inside
 // the testing framework
-bool print_flag = false;
+static bool print_flag = false;
 
 
 // This constant represents INVALID_NODE_ID which is used as an indication
@@ -222,7 +222,7 @@ class BwTreeBase {
    public: 
     // This is the alignment of padded data - we adjust its alignment
     // after malloc() a chunk of memory
-    static constexpr size_t ALIGNMENT = Alignment;
+    static constexpr size_t WANG_ALIGNMENT = Alignment;
     
     // This is where real data goes
     DataType data;
@@ -236,12 +236,12 @@ class BwTreeBase {
     {}
     
    private:
-    char padding[ALIGNMENT - sizeof(DataType)];  
+    char padding[WANG_ALIGNMENT - sizeof(DataType)];  
   };
   
   using PaddedGCMetadata = PaddedData<GCMetaData, CACHE_LINE_SIZE>;
   
-  static_assert(sizeof(PaddedGCMetadata) == PaddedGCMetadata::ALIGNMENT, 
+  static_assert(sizeof(PaddedGCMetadata) == PaddedGCMetadata::WANG_ALIGNMENT, 
                 "class PaddedGCMetadata size does"
                 " not conform to the alignment!");
  
@@ -536,8 +536,6 @@ public:
 
 	//> Defined and declared below
 //	bwtree_wang(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
-//	{
-//	}
 
 	void initThread(const int tid) { RegisterThread(); };
 	void deinitThread(const int tid) {};
@@ -2568,6 +2566,7 @@ public:
          ValueEqualityChecker p_value_eq_obj = ValueEqualityChecker{},
          ValueHashFunc p_value_hash_obj = ValueHashFunc{}) :
       BwTreeBase(),
+      Map<K,V>(_NO_KEY, _NO_VALUE),
       // Key comparator, equality checker and hasher
       key_cmp_obj{p_key_cmp_obj},
       key_eq_obj{p_key_eq_obj},
@@ -7204,10 +7203,10 @@ before_switch:
   /*
    * Insert() - Insert a key-value pair
    *
-   * This function returns false if value already exists
+   * This function returns the old value if key already exists
    * If CAS fails this function retries until it succeeds
    */
-  bool Insert(const KeyType &key, const ValueType &value) {
+  const V Insert(const KeyType &key, const ValueType &value) {
     bwt_printf("Insert called\n");
 
     #ifdef BWTREE_DEBUG
@@ -7226,11 +7225,11 @@ before_switch:
       // if there is none then return nullptr
       const KeyValuePair *item_p = Traverse(&context, &value, &index_pair);
 
-      // If the key-value pair already exists then return false
+      // If the key-value pair already exists then return the previous value
       if(item_p != nullptr) {
         epoch_manager.LeaveEpoch(epoch_node_p);
 
-        return false;
+        return item_p->second;
       }
 
       NodeSnapshot *snapshot_p = GetLatestNodeSnapshot(&context);
@@ -7286,7 +7285,7 @@ before_switch:
 
     epoch_manager.LeaveEpoch(epoch_node_p);
 
-    return true;
+    return this->NO_VALUE;
   }
 
   /*
@@ -9213,17 +9212,16 @@ const V BWTREE_WANG_FUNCT::insert(const int tid, const K& key, const V& val)
 BWTRE_WANG_TEMPL
 const V BWTREE_WANG_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	bool inserted = Insert(key, val);
-	if (inserted) return NULL;
-	else          return (const V)1;
+	return Insert(key, val);
 }
 
 BWTRE_WANG_TEMPL
 const std::pair<V,bool> BWTREE_WANG_FUNCT::remove(const int tid, const K& key)
 {
+	//> FIXME this is very static for microbench.
 	bool deleted = Delete(key, (const V&)key);
-	if (deleted) return std::pair<V,bool>((const V)1, true);
-	else         return std::pair<V,bool>(NULL, false);
+	if (deleted) return std::pair<V,bool>((const V)key, true);
+	else         return std::pair<V,bool>(this->NO_VALUE, false);
 }
 
 BWTRE_WANG_TEMPL
