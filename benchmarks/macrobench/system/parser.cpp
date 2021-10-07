@@ -22,9 +22,9 @@ void print_usage() {
 	printf("\t-GuINT      ; TS_BATCH_NUM\n");
 	printf("\t-o STRING   ; output file\n\n");
 
-	printf("\t[Index Data structures]:\n");
+	printf("  [Index Data structures]:\n");
 	printf("\t--data-structure=STRING  ; data structure type\n");
-	printf("\t--sync-type=STRING       ; syncronization type\n");
+	printf("\t--sync-type=STRING       ; syncronization type\n\n");
 
 	printf("  [YCSB]:\n");
 	printf("\t-cINT       ; PART_PER_TXN\n");
