@@ -50,7 +50,8 @@ private:
 
 public:
 	abtree_brown(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
-      : prov(new SCXProvider<Node, MAX_NODE_DEPENDENCIES_PER_SCX>(numProcesses))
+      : Map<K,V>(_NO_KEY, _NO_VALUE),
+	    prov(new SCXProvider<Node, MAX_NODE_DEPENDENCIES_PER_SCX>(numProcesses))
 	{
 		initThread(0);
 
@@ -93,7 +94,6 @@ public:
 //	unsigned long long size() { return size_rec(root) - 2; };
 
 private:
-	const V NO_VALUE = NULL;
 	const int NUM_PROCESSES = 88;
 	const int a = std::max(ABTREE_DEGREE/4, 2);
 	const int b = ABTREE_DEGREE;
@@ -266,7 +266,7 @@ private:
         }
 
         void debugPrint() {
-			std::cout << "Validation:\n";
+			std::cout << "\nValidation:\n";
 			std::cout << "=======================\n";
             std::cout << "averageDegree= "  << getAverageDegree()     << "\n";
             std::cout << "averageDepth= "   << getAverageKeyDepth()   << "\n";
@@ -310,7 +310,7 @@ private:
 	        int keyIndex = l->getKeyIndex(key);
 	        if (keyIndex < l->getKeyCount() && l->keys[keyIndex] == key) {
 	            // if l already contains key, replace the existing value
-	            const V& oldValue = l->ptrs[keyIndex];
+	            const V& oldValue = (V)l->ptrs[keyIndex];
 	            if (!replace) return oldValue;
 	            
 	            prov->scxInit(tid);
@@ -375,7 +375,7 @@ private:
 	                if (prov->scxExecute(tid, (void * volatile *) &p->ptrs[ixToL], l, n)) {
 //	                    recordmgr->retire(tid, l);
 	                    fixDegreeViolation(tid, n);
-	                    return NO_VALUE;
+	                    return this->NO_VALUE;
 	                }
 //	                guard.end();
 //	                this->recordmgr->deallocate(tid, n);
@@ -439,7 +439,7 @@ private:
 //	                    recordmgr->retire(tid, l);
 	                    // after overflow, there may be a weight violation at n
 	                    fixWeightViolation(tid, n);
-	                    return NO_VALUE;
+	                    return this->NO_VALUE;
 	                }
 //	                guard.end();
 //	                this->recordmgr->deallocate(tid, n);
@@ -473,7 +473,7 @@ private:
 	        const int keyIndex = l->getKeyIndex(key);
 	        if (keyIndex == l->getKeyCount() || l->keys[keyIndex] != key) {
 	            // if l does not contain key, we are done.
-	            return std::pair<V,bool>(NO_VALUE,false);
+	            return std::pair<V,bool>(this->NO_VALUE, false);
 	        } else {
 	            // if l contains key, replace l by a new copy that does not contain key.
 	            prov->scxInit(tid);
@@ -497,7 +497,7 @@ private:
 	            n->size = l->size-1;
 	            n->weight = true;
 	
-	            V oldValue = l->ptrs[keyIndex];
+	            V oldValue = (V)l->ptrs[keyIndex];
 	            if (prov->scxExecute(tid, (void * volatile *) &p->ptrs[ixToL], l, n)) {
 //	                recordmgr->retire(tid, l);
 	                /**
@@ -1011,10 +1011,10 @@ const std::pair<V,bool> ABTREE_BROWN_FUNCT::find(const int tid, const K& key)
     }
     int index = l->getKeyIndex(key);
     if (index < l->getKeyCount() && l->keys[index] == key) {
-        result.first = l->ptrs[index];
+        result.first = (V)l->ptrs[index];
         result.second = true;
     } else {
-        result.first = NO_VALUE;
+        result.first = this->NO_VALUE;
         result.second = false;
     }
     return result;

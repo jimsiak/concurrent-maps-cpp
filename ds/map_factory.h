@@ -14,16 +14,16 @@
 #include "seq/btree.h"
 #include "seq/abtree.h"
 
-#include "locks/bst_avl_bronson.h"
+//#include "locks/bst_avl_bronson.h"
 #include "locks/bst_avl_drachsler.h"
-#include "locks/bst_avl_cf.h"
+//#include "locks/bst_avl_cf.h"
 #include "locks/bst_unb_ext_hohlocks.h"
 
 #include "lock-free/bst_unb_natarajan.h"
 #include "lock-free/bst_unb_ellen.h"
 #include "lock-free/bst_unb_howley.h"
 #include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
-//#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
+#include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
 //#include "lock-free/bwtree_wang/wang.h"
 
 #include "cop/avl_internal.h"
@@ -65,12 +65,12 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 	else if (type == "abtree")
 		map = new abtree<K,V>(-1, NULL, 88);
 	//> Lock-based
-	else if (type == "bst-avl-bronson")
-		map = new bst_avl_bronson<K,V>(-1, NULL, 88);
+//	else if (type == "bst-avl-bronson")
+//		map = new bst_avl_bronson<K,V>(-1, NULL, 88);
 	else if (type == "bst-avl-drachsler")
 		map = new bst_avl_drachsler<K,V>(-1, NULL, 88);
-	else if (type == "bst-avl-cf")
-		map = new bst_avl_cf<K,V>(-1, NULL, 88);
+//	else if (type == "bst-avl-cf")
+//		map = new bst_avl_cf<K,V>(-1, NULL, 88);
 	else if (type == "bst-unb-ext-hohlocks")
 		map = new bst_unb_ext_hohlocks<K,V>(-1, NULL, 88);
 	//> Lock-free
@@ -82,8 +82,8 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new bst_unb_howley<K,V>(-1, NULL, 88);
 	else if (type == "ist-brown")
 		map = new ist_brown<K,V>(-1, NULL, 88);
-//	else if (type == "abtree-brown")
-//		map = new abtree_brown<K,V>(-1, NULL, 88);
+	else if (type == "abtree-brown")
+		map = new abtree_brown<K,V>(-1, NULL, 88);
 //	else if (type == "bwtree-wang")
 //		map = new bwtree_wang<K,V>(-1, NULL, 88);
 	//> COP-based
@@ -101,7 +101,7 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 
 	if (sync_type == "cg-htm" || sync_type == "cg-rwlock"
 	                          || sync_type == "cg-spinlock")
-		map = new cg_ds<K,V>(-1, NULL, 88, map, sync_type);
+		map = new cg_ds<K,V>(0, NULL, 88, map, sync_type);
 	else if (sync_type == "ca-locks")
 		map = new ca_locks<K,V>(-1, NULL, 88, map);
 	else if (sync_type == "rcu-htm")

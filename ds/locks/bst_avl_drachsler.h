@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <climits>
 #include "../map_if.h"
 #include "Log.h"
 #include "lock.h"
