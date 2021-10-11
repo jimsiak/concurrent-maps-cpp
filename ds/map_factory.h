@@ -24,7 +24,8 @@
 #include "lock-free/bst_unb_howley.h"
 #include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
 #include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
-//#include "lock-free/bwtree_wang/wang.h"
+#include "lock-free/bst_brown/bst.h"
+#include "lock-free/bwtree_wang/wang.h"
 
 #include "cop/avl_internal.h"
 #include "cop/avl_external.h"
@@ -84,8 +85,12 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new ist_brown<K,V>(-1, NULL, 88);
 	else if (type == "abtree-brown")
 		map = new abtree_brown<K,V>(-1, NULL, 88);
-//	else if (type == "bwtree-wang")
-//		map = new bwtree_wang<K,V>(-1, NULL, 88);
+	else if (type == "bst-brown-3path")
+		map = new bst_brown<K,V>(-1, NULL, 88);
+	else if (type == "bst-brown-llxscx")
+		map = new bst_brown<K,V>(-1, NULL, 88, -1, -1);
+	else if (type == "bwtree-wang")
+		map = new bwtree_wang<K,V>(-1, NULL, 88);
 	//> COP-based
 	else if (type == "avl-int-cop")
 		map = new avl_int_cop<K,V>(-1, NULL, 88);
