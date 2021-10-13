@@ -68,15 +68,15 @@ using namespace std;
 #define STATE_GET_REFCOUNT(state) ((state)>>16)
 #define STATE_REFCOUNT_UNIT (1<<16)
 
-static const int MAX_NODES = 6;
-static const int NUMBER_OF_PATHS = 3;
-static const int PATH_FAST_HTM = 0;
-static const int PATH_SLOW_HTM = 1;
-static const int PATH_FALLBACK = 2;
-
-static const int ABORT_PROCESS_ON_FALLBACK = 3;
-static const int ABORT_NODE_POINTER_CHANGED = 12;
-static const int ABORT_LLX_FAILED = 13;
+//static const int MAX_NODES = 6;
+//static const int NUMBER_OF_PATHS = 3;
+//static const int PATH_FAST_HTM = 0;
+//static const int PATH_SLOW_HTM = 1;
+//static const int PATH_FALLBACK = 2;
+//
+//static const int ABORT_PROCESS_ON_FALLBACK = 3;
+//static const int ABORT_NODE_POINTER_CHANGED = 12;
+//static const int ABORT_LLX_FAILED = 13;
 
 class bst_retired_info {
 public:

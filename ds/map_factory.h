@@ -24,6 +24,7 @@
 #include "lock-free/bst_unb_howley.h"
 #include "lock-free/ist_brown/brown_ext_ist_lf_impl.h"
 #include "lock-free/abtree_brown/brown_ext_abtree_lf_impl.h"
+#include "lock-free/abtree_brown/3path.h"
 #include "lock-free/bst_brown/bst.h"
 #include "lock-free/bwtree_wang/wang.h"
 
@@ -83,8 +84,13 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new bst_unb_howley<K,V>(-1, NULL, 88);
 	else if (type == "ist-brown")
 		map = new ist_brown<K,V>(-1, NULL, 88);
+	// This is an LLX/SCX based, and it should be similar to bst-brown-3path
 	else if (type == "abtree-brown")
 		map = new abtree_brown<K,V>(-1, NULL, 88);
+	else if (type == "abtree-brown-3path")
+		map = new abtree_brown_3path<K,V>(-1, NULL, 88);
+	else if (type == "abtree-brown-llxscx")
+		map = new abtree_brown_3path<K,V>(-1, NULL, 88, -1, -1);
 	else if (type == "bst-brown-3path")
 		map = new bst_brown<K,V>(-1, NULL, 88);
 	else if (type == "bst-brown-llxscx")
