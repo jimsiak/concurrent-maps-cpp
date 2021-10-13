@@ -86,22 +86,50 @@ Currently the following data structures have been implemented:
 * B+-tree
 * (a-b)-tree
 
+### Coarse-grained synchronization mechanisms
+
+All the above sequential data structures can be protected by any of the following coarse-grained synchronization mechanisms:
+
+* cg-spin: enclose each operation in a pthread spinlock acquire/release section.
+* cg-rwlock: enclose each operation in pthread rwlock acquire/release section.
+* cg-htm: enclose each operation in an HTM transaction using Intel's TSX instructions.
+
 ### Lock-based
 
 * Unbalanced External BST with hand-over-hand locking.
-* Relaxed Partially External AVL BST by Bronson et. al [[1]](#1).
-* Relaxed Internal AVL BST by Drachsler et. al [[2]](#2).
-* Relaxed Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[3]](#3).
+* Relaxed-balance Partially External AVL BST by Bronson et. al [[1]](#1).
+* Relaxed-balance Internal AVL BST by Drachsler et. al [[2]](#2).
+* Relaxed-balance Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[3]](#3).
+* Contention-adaptive Treap by Winblad et. al [[4]](#4).
 
 ### Lock-free
 
-* Unbalanced Internal BST by Ellen et. al [[4]](#4).
-* Unbalanced Internal BST by Howley et. al [[5]](#5).
-* Unbalanced External BST by Natarajan et. al [[6]](#6).
+* Unbalanced Internal BST by Ellen et. al [[5]](#).
+* Unbalanced Internal BST by Howley et. al [[6]](#6).
+* Unbalanced External BST by Natarajan et. al [[#7]](#7).
+* Unbalanced External BST with 3-path synchronization by Brown et. al [[8]](#8).
+* Relaxed-balance (a-b)-tree with 3-path synchronization by Brown et. al [[8]](#8).
+* Interpolation ST synchronized with Double-Compare-Single-Swap (DCSS) by Brown et. al [[9]](#9).
+* OpenBW-tree by Wang et. al [[10]](#10).
 
 ### RCU and HTM based
 
+* External AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[11]](#11).
+* Internal AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[11]](#11)
+* RCU with coarse-grained lock synchronization for updaters (RCU-SGL) for all the data structures for with an RCU-HTM version is provided.
+
 ### RCU-HTM based
+
+* Unbalanced Binary Search Tree
+  * Internal
+  * Partially External
+  * External
+* AVL Binary Search Tree
+  * Internal
+  * Partially External
+  * External
+* B+-tree
+* (a-b)-tree
 
 ## References
 <a id="1">[1]</a> 
@@ -117,13 +145,33 @@ Crain (2013).
 The Contention-Friendly Tree.
 
 <a id="4">[4]</a> 
+Winblad (2018). 
+Lock-free Contention Adapting Search Trees
+
+<a id="5">[5]</a> 
 Ellen (2010). 
 Non-blocking Binary Search Trees.
 
-<a id="5">[5]</a> 
+<a id="6">[6]</a> 
 Howley (2012). 
 A non-blocking internal binary search tree.
 
-<a id="6">[6]</a> 
+<a id="7">[7]</a> 
 Crain (2014). 
 Fast concurrent lock-free binary search trees.
+
+<a id="8">[8]</a> 
+Brown (2017). 
+A Template for Implementing Fast Lock-free Trees Using HTM.
+
+<a id="9">[9]</a> 
+Brown (2020). 
+Non-blocking interpolation search trees with doubly-logarithmic running time.
+
+<a id="10">[10]</a> 
+Wang (2018).
+Building a Bw-Tree Takes More Than Just Buzz Words.
+
+<a id="11">[11]</a>
+Avni (2014).
+Improving HTM Scaling with Consistency-Oblivious Programming.
