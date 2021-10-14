@@ -14,9 +14,9 @@
 #include "seq/btree.h"
 #include "seq/abtree.h"
 
-//#include "locks/bst_avl_bronson.h"
+#include "locks/bst_avl_bronson.h"
 #include "locks/bst_avl_drachsler.h"
-//#include "locks/bst_avl_cf.h"
+#include "locks/bst_avl_cf.h"
 #include "locks/bst_unb_ext_hohlocks.h"
 
 #include "lock-free/bst_unb_natarajan.h"
@@ -67,12 +67,12 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 	else if (type == "abtree")
 		map = new abtree<K,V>(-1, NULL, 88);
 	//> Lock-based
-//	else if (type == "bst-avl-bronson")
-//		map = new bst_avl_bronson<K,V>(-1, NULL, 88);
+	else if (type == "bst-avl-bronson")
+		map = new bst_avl_bronson<K,V>(-1, NULL, 88);
 	else if (type == "bst-avl-drachsler")
 		map = new bst_avl_drachsler<K,V>(-1, NULL, 88);
-//	else if (type == "bst-avl-cf")
-//		map = new bst_avl_cf<K,V>(-1, NULL, 88);
+	else if (type == "bst-avl-cf")
+		map = new bst_avl_cf<K,V>(-1, NULL, 88);
 	else if (type == "bst-unb-ext-hohlocks")
 		map = new bst_unb_ext_hohlocks<K,V>(-1, NULL, 88);
 	//> Lock-free

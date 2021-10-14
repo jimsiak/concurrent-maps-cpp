@@ -20,7 +20,7 @@ public:
 	bst_avl_cf(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
-		root = new node_t(0, NULL);
+		root = new node_t(0, this->NO_VALUE);
 		spawn_maintenance_thread();
 	}
 
@@ -283,9 +283,6 @@ private:
 		bst_avl_cf *tree = (bst_avl_cf *)arg;
 		volatile int i = 0;
 	
-		//> Initialize appropriately the node_allocation struct.
-//		node_allocator_init_thread(-2);
-	
 		while (!tree->stop_maint_thread) {
 			tree->restructure_node(tree->root, tree->root->right, 0);
 	//		usleep(200000);
@@ -394,13 +391,14 @@ private:
 		return ret;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
 		node_t *curr, *next;
 		int ret = 0;
 		ret = do_traverse(key, &curr, &next);
 		if (ret == 1) ret = do_insert(key, value, curr);
-		return ret;
+		if (ret == 1) return this->NO_VALUE;
+		else          return curr->value;
 	}
 	
 	int do_delete(const K& key, node_t *curr)
@@ -414,13 +412,14 @@ private:
 		return ret;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
 		node_t *curr, *next;
 		int ret = 0;
 		ret = do_traverse(key, &curr, &next);
 		if (ret == 1) ret = do_delete(key, curr);
-		return ret;
+		if (ret == 0) return this->NO_VALUE;
+		else          return curr->value;
 	}
 
 	int update_helper(const K& key, const V& value)
@@ -573,17 +572,14 @@ const V BST_AVL_CF_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_AVL_CF_TEMPL
 const V BST_AVL_CF_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_CF_TEMPL
 const std::pair<V,bool> BST_AVL_CF_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_CF_TEMPL
