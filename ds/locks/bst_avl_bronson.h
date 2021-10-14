@@ -6,6 +6,9 @@
 
 /**
  * NOTES:
+ * 14/10/2021: I fixed the following problem by adding a marked field in the
+ * nodes.
+ *
  * The `value` field of `node_t` is used to mark a node, so we have a problem
  * with having V as a value type.
  * Actually using `value` to mark nodes did indeed create a problem.
@@ -35,10 +38,7 @@
 #define GET_CHILD_KEY(node, key) ((key < (node)->key) ? (node)->left : (node)->right)
 
 #define RETRY 0xFF
-//> Used as `value` for marked nodes (zombie nodes)
-#define MARKED_NODE ((void *)0xffffffffLLU)
 
-//#define SW_BARRIER() __sync_synchronize()
 #define SW_BARRIER() asm volatile("": : :"memory")
 
 #define BEGIN_SHRINKING(n) (n)->version |= SHRINKING; SW_BARRIER()
@@ -50,7 +50,7 @@ public:
 	bst_avl_bronson(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
-		root = new node_t(99999999, 0, 0, 0, NULL);
+		root = new node_t(99999999, this->NO_VALUE, 0, 0, NULL);
 	}
 
 	void initThread(const int tid) {};
@@ -79,6 +79,7 @@ private:
 		K key;
 		V value;
 	
+		bool marked;
 		int height;
 		long long version;
 
@@ -90,6 +91,7 @@ private:
 		node_t(K key, V value, int height, long long version, node_t *parent) {
 			this->key = key;
 			this->value = value;
+			this->marked = false;
 			this->height = height;
 			this->version = version;
 			this->parent = parent;
@@ -119,7 +121,7 @@ private:
 	}
 	
 	int attempt_get(const K& key, node_t *node, int dir, long long version,
-	                const V& retval)
+	                V& retval)
 	{
 		node_t *child;
 		int next_dir, ret;
@@ -159,7 +161,7 @@ private:
 	const V lookup_helper(const K& key)
 	{
 		int ret;
-		const V retval;
+		V retval = this->NO_VALUE;
 		ret = attempt_get(key, root, RIGHT, 0, retval);
 		assert(ret != RETRY);
 		return retval;
@@ -181,7 +183,7 @@ private:
 	
 		nl = node->left;
 		nr = node->right;
-		if ((!nl || !nr) && node->value == MARKED_NODE) return UNLINK_REQUIRED;
+		if ((!nl || !nr) && node->marked) return UNLINK_REQUIRED;
 	
 		hn = node->height;
 		hl = NODE_HEIGHT(nl);
@@ -225,11 +227,11 @@ private:
 	
 		balance_n = hlr - hr;
 		if (balance_n < -1 || balance_n > 1) return n;
-		if ((!nlr || hr == 0) && n->value == MARKED_NODE) return n;
+		if ((!nlr || hr == 0) && n->marked) return n;
 	
 		balance_l = hll - hn_new;
 		if (balance_l < -1 || balance_l > 1) return nl;
-		if (hll == 0 && nl->value == MARKED_NODE) return nl;
+		if (hll == 0 && nl->marked) return nl;
 		return fix_node_height(parent);
 	}
 	node_t *rotate_right_over_left(node_t *parent, node_t *n, node_t *nl, int hr, int hll,
@@ -268,7 +270,6 @@ private:
 	
 		balance_n = hlrr - hr;
 		if (balance_n < -1 || balance_n > 1) return n;
-//		if ((!nlrr || hr == 0) && n->data == MARKED_NODE) return n;
 	
 		balance_lr = hl_new - hn_new;
 		if (balance_lr < -1 || balance_lr > 1) return nlr;
@@ -316,12 +317,12 @@ private:
 			UNLOCK(&nlr->lock);
 			UNLOCK(&nl->lock);
 			return ret;
-	//	}
-	//	UNLOCK(&nlr->lock);
-	//
-	//	ret = rebalance_left(n, nl, nlr, hll);
-	//	UNLOCK(&nl->lock);
-	//	return ret;
+//		}
+//		UNLOCK(&nlr->lock);
+//
+//		ret = rebalance_left(n, nl, nlr, hll);
+//		UNLOCK(&nl->lock);
+//		return ret;
 	}
 	node_t *rotate_left(node_t *parent, node_t *n, int hl,
 	                    node_t *nr, node_t *nrl, int hrl, int hrr)
@@ -346,11 +347,11 @@ private:
 	
 		balance_n = hrl - hl;
 		if (balance_n < -1 || balance_n > 1) return n;
-		if ((!nrl || hl == 0) && n->value == MARKED_NODE) return n;
+		if ((!nrl || hl == 0) && n->marked) return n;
 	
 		balance_r = hrr - hn_new;
 		if (balance_r < -1 || balance_r > 1) return nr;
-		if (hrr == 0 && nr->value == MARKED_NODE) return nr;
+		if (hrr == 0 && nr->marked) return nr;
 		return fix_node_height(parent);
 	
 	}
@@ -391,7 +392,6 @@ private:
 	
 		balance_n = hrll - hl;
 		if (balance_n < -1 || balance_n > 1) return n;
-//		if ((!nrll || hl == 0) && n->data == MARKED_NODE) return n;
 	
 		balance_rl = hr_new - hn_new;
 		if (balance_rl < -1 || balance_rl > 1) return nrl;
@@ -468,7 +468,7 @@ private:
 		node_t *nl = n->left, *nr = n->right;
 		int hn, hl, hr, hn_new, balance;
 	
-		if ((!nl || !nr) && n->value == MARKED_NODE) {
+		if ((!nl || !nr) && n->marked) {
 			if (attempt_node_unlink(parent, n)) return fix_node_height(parent);
 			else                                return n;
 		}
@@ -537,14 +537,15 @@ private:
 		return 1;
 	}
 	
-	int attempt_relink(node_t *node)
+	int attempt_relink(node_t *node, const V& val)
 	{
 		int ret;
 		LOCK(&node->lock);
 		if (node->version == UNLINKED) {
 			ret = RETRY;
-		} else if (node->value == MARKED_NODE) {
-			node->value = NULL;
+		} else if (node->marked) {
+			node->marked = false;
+			node->value = val;
 			ret = 1;
 		} else {
 			ret = 0;
@@ -554,7 +555,7 @@ private:
 	}
 	
 	int attempt_put(const K& key, const V& value, node_t *node, int dir,
-	                long long version)
+	                long long version, V& retval)
 	{
 		node_t *child;
 		int next_dir, ret = RETRY;
@@ -569,17 +570,20 @@ private:
 	
 			if (child == NULL) {
 				ret = attempt_insert(key, value, node, dir, version);
+				if (ret != RETRY) retval = this->NO_VALUE;
 			} else {
 				next_dir = (key < child->key) ? LEFT : RIGHT;
 				if (key == child->key) {
-					ret = attempt_relink(child);
+					ret = attempt_relink(child, value);
+					if (ret == 0) retval = child->value;
+					else if (ret == 1) retval = this->NO_VALUE;
 				} else {
 					child_version = child->version;
 					if (IS_SHRINKING(child_version)) {
 						wait_until_not_changing(child);
 					} else if (child_version != UNLINKED && child == GET_CHILD_DIR(node, dir)) {
 						if (node->version != version) return RETRY;
-						ret = attempt_put(key, value, child, next_dir, child_version);
+						ret = attempt_put(key, value, child, next_dir, child_version, retval);
 					}
 				}
 			}
@@ -588,13 +592,12 @@ private:
 		return ret;
 	}
 	
-	int insert_helper(const K& key, const V& value)
+	const V insert_helper(const K& key, const V& value)
 	{
-		int ret;
-		assert((void *)value != MARKED_NODE);
-		ret = attempt_put(key, value, root, RIGHT, 0);
+		V retval;
+		int ret = attempt_put(key, value, root, RIGHT, 0, retval);
 		assert(ret != RETRY);
-		return ret;
+		return retval;
 	}
 
 	int total_paths;
@@ -607,7 +610,7 @@ private:
 		if (!root)
 			return -1;
 	
-		if (root->value == MARKED_NODE) marked_nodes++;
+		if (root->marked) marked_nodes++;
 		
 		if (root->lock != 1) locked_nodes++;
 	
@@ -692,7 +695,7 @@ private:
 	#define CAN_UNLINK(n) ((n)->left == NULL || (n)->right == NULL)
 	int attempt_rm_node(node_t *par, node_t *n)
 	{
-		if (n->value == MARKED_NODE) return 0;
+		if (n->marked) return 0;
 	
 		if (!CAN_UNLINK(n)) {
 			//> Internal node, just mark it
@@ -701,8 +704,8 @@ private:
 				UNLOCK(&n->lock);
 				return RETRY;
 			}
-			if (n->value != MARKED_NODE) {
-				n->value = MARKED_NODE;
+			if (!n->marked) {
+				n->marked = true;
 				UNLOCK(&n->lock);
 				return 1;
 			} else {
@@ -724,13 +727,13 @@ private:
 			return RETRY;
 		}
 	
-		if (n->value== MARKED_NODE) {
+		if (n->marked) {
 			UNLOCK(&n->lock);
 			UNLOCK(&par->lock);
 			return 0;
 		}
 	
-		n->value = MARKED_NODE;
+		n->marked = true;
 		if (CAN_UNLINK(n)) {
 			node_t *c = (n->left == NULL) ? n->right : n->left;
 			if (par->left == n) par->left = c;
@@ -746,7 +749,8 @@ private:
 		return 1;
 	}
 	
-	int attempt_remove(const K& key, node_t *node, int dir, long long version)
+	int attempt_remove(const K& key, node_t *node, int dir, long long version,
+	                   V& retval)
 	{
 		node_t *child;
 		int next_dir, ret = RETRY;
@@ -759,18 +763,23 @@ private:
 			//> The node version has changed. Must retry.
 			if (node->version != version) return RETRY;
 	
-			if (child == NULL) return 0;
+			if (child == NULL) {
+				retval = this->NO_VALUE;
+				return 0;
+			}
 	
 			next_dir = (key < child->key) ? LEFT : RIGHT;
 			if (key == child->key) {
 				ret = attempt_rm_node(node, child);
+				if (ret == 1) retval = child->value;
+				else if (ret == 0) retval = this->NO_VALUE;
 			} else {
 				child_version = child->version;
 				if (IS_SHRINKING(child_version)) {
 					wait_until_not_changing(child);
 				} else if (child_version != UNLINKED && child == GET_CHILD_DIR(node, dir)) {
 					if (node->version != version) return RETRY;
-					ret = attempt_remove(key, child, next_dir, child_version);
+					ret = attempt_remove(key, child, next_dir, child_version, retval);
 				}
 			}
 		} while (ret == RETRY);
@@ -778,12 +787,13 @@ private:
 		return ret;
 	}
 	
-	int delete_helper(const K& key)
+	const V delete_helper(const K& key)
 	{
+		V retval;
 		int ret;
-		ret = attempt_remove(key, root, RIGHT, 0);
+		ret = attempt_remove(key, root, RIGHT, 0, retval);
 		assert(ret != RETRY);
-		return ret;
+		return retval;
 	}
 	
 	int attempt_update(const K& key, const V& value, node_t *node, int dir,
@@ -807,8 +817,8 @@ private:
 	
 			next_dir = (key < child->key) ? LEFT : RIGHT;
 			if (key == child->key) {
-				if (child->value == MARKED_NODE) {
-					ret = attempt_relink(child);
+				if (child->marked) {
+					ret = attempt_relink(child, value);
 				} else {
 					ret = attempt_rm_node(node, child);
 					if (ret != RETRY) ret += 2;
@@ -851,7 +861,7 @@ private:
 			return;
 		}
 	
-		std::cout << root->key << "[" << root->height << "](" << root << ")\n";
+		std::cout << root->key << "[" << root->height << "](" << root->value << ")\n";
 	
 		print_rec(root->left, level + 1);
 	}
@@ -873,7 +883,7 @@ private:
 BST_AVL_BRONSON_TEMPL
 bool BST_AVL_BRONSON_FUNCT::contains(const int tid, const K& key)
 {
-	const V = ret lookup_helper(key);
+	const V ret =  lookup_helper(key);
 	return ret != this->NO_VALUE;
 }
 
@@ -900,17 +910,14 @@ const V BST_AVL_BRONSON_FUNCT::insert(const int tid, const K& key, const V& val)
 BST_AVL_BRONSON_TEMPL
 const V BST_AVL_BRONSON_FUNCT::insertIfAbsent(const int tid, const K& key, const V& val)
 {
-	int ret = insert_helper(key, val);
-	if (ret == 1) return NULL;
-	else return (void *)1;
+	return insert_helper(key, val);
 }
 
 BST_AVL_BRONSON_TEMPL
 const std::pair<V,bool> BST_AVL_BRONSON_FUNCT::remove(const int tid, const K& key)
 {
-	int ret = delete_helper(key);
-	if (ret == 0) return std::pair<V,bool>(NULL, false);
-	else return std::pair<V,bool>((void*)1, true);
+	const V ret = delete_helper(key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 BST_AVL_BRONSON_TEMPL
