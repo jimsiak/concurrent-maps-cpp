@@ -112,7 +112,7 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 
 	if (sync_type == "cg-htm" || sync_type == "cg-rwlock"
 	                          || sync_type == "cg-spinlock")
-		map = new cg_ds<K,V>(0, NULL, 88, map, sync_type);
+		map = new cg_ds<K,V>(-1, NULL, 88, map, sync_type);
 	else if (sync_type == "ca-locks")
 		map = new ca_locks<K,V>(-1, NULL, 88, map);
 	else if (sync_type == "rcu-htm")

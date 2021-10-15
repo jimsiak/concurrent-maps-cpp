@@ -4,6 +4,16 @@
  *    A non-blocking internal binary search tree, Howley et. al, SPAA 2012
  **/
 
+/**
+ * NOTE by jimsiak 15/10/2021
+ * This implementation has a big problem (I would say its a bug).
+ * More specifically, there is a race when a node is being rellocated by a
+ * delete operation. An insert operation gets a pointer by search() to the
+ * node that contains the key to be inserted. Before insert_helper() returns
+ * this node's value the rellocate operations changes the value to the one
+ * of the predecessor. I don't know how it can be fixed :-(
+ **/
+
 #pragma once
 
 #include "../map_if.h"
@@ -12,22 +22,29 @@
 #define CAS_PTR(a,b,c) __sync_val_compare_and_swap(a,b,c)
 #define CAS_U32(a,b,c) __sync_val_compare_and_swap(a,b,c)
 
-//Encoded in the operation pointer
+// Encoded in the operation pointer
 #define STATE_OP_NONE 0
 #define STATE_OP_MARK 1
 #define STATE_OP_CHILDCAS 2
 #define STATE_OP_RELOCATE 3
 
-//In the relocate_op struct
+// Encoded in the relocate_op struct
 #define STATE_OP_ONGOING 0
 #define STATE_OP_SUCCESSFUL 1
 #define STATE_OP_FAILED 2
 
-//States for the result of a search operation
+// States for the result of a search operation
 #define FOUND 0x0
 #define NOT_FOUND_L 0x1
 #define NOT_FOUND_R 0x2
 #define ABORT 0x3
+
+//> Helper Macros
+#define GETFLAG(op)    ((uint64_t)(op) & 3)
+#define FLAG(op, flag) ((((uint64_t)(op)) & 0xfffffffffffffffc) | (flag))
+#define UNFLAG(op)     (((uint64_t)(op)) & 0xfffffffffffffffc)
+#define ISNULL(node)   (((node) == NULL) || (((uint64_t)node) & 1))
+#define SETNULL(node)  ((((uint64_t)node) & 0xfffffffffffffffe) | 1)
 
 template <typename K, typename V>
 class bst_unb_howley : public Map<K,V> {
@@ -35,7 +52,7 @@ public:
 	bst_unb_howley(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
-		root = new node_t(0, NULL);
+		root = new node_t(0, this->NO_VALUE);
 	}
 
 	void initThread(const int tid) {
@@ -60,13 +77,6 @@ public:
 //	unsigned long long size() { return size_rec(root) - 2; };
 
 private:
-//> Helper Macros
-#define GETFLAG(op)    ((uint64_t)(op) & 3)
-#define FLAG(op, flag) ((((uint64_t)(op)) & 0xfffffffffffffffc) | (flag))
-#define UNFLAG(op)     (((uint64_t)(op)) & 0xfffffffffffffffc)
-#define ISNULL(node)   (((node) == NULL) || (((uint64_t)node) & 1))
-#define SETNULL(node)  ((((uint64_t)node) & 0xfffffffffffffffe) | 1)
-
 	union operation_t;
 
 	struct node_t {
@@ -126,13 +136,11 @@ private:
 	{
 		int seen_state = op->relocate_op.state;
 		if (seen_state == STATE_OP_ONGOING) {
-			// VCAS in original implementation
 			operation_t *seen_op = CAS_PTR(&(op->relocate_op.dest->op), op->relocate_op.dest_op, FLAG(op, STATE_OP_RELOCATE));
 			if ((seen_op == op->relocate_op.dest_op) || (seen_op == (operation_t *)FLAG(op, STATE_OP_RELOCATE))){
 				CAS_U32(&(op->relocate_op.state), STATE_OP_ONGOING, STATE_OP_SUCCESSFUL);
 				seen_state = STATE_OP_SUCCESSFUL;
 			} else {
-				// VCAS in original implementation
 				seen_state = CAS_U32(&(op->relocate_op.state), STATE_OP_ONGOING, STATE_OP_FAILED);
 			}
 		}
@@ -160,7 +168,7 @@ private:
 	{
 		node_t *new_ref;
 		if (ISNULL((node_t*) curr->left)) {
-			if (ISNULL((node_t*) curr->right)) new_ref = (node_t*)SETNULL(curr);
+			if (ISNULL((node_t*) curr->right)) new_ref = (node_t*) SETNULL(curr);
 			else                               new_ref = (node_t*) curr->right;
 		} else {
 			new_ref = (node_t*) curr->left;
@@ -263,8 +271,7 @@ private:
 		operation_t *cas_op;
 		bool is_left;
 	
-		if (*new_node == NULL)
-			*new_node = new node_t(k, v);
+		if (*new_node == NULL) *new_node = new node_t(k, v);
 	
 		is_left = (result == NOT_FOUND_L);
 		if (is_left) old = curr->left;
@@ -322,7 +329,7 @@ private:
 			(*reloc_op)->relocate_op.dest = curr;
 			(*reloc_op)->relocate_op.dest_op = curr_op;
 			(*reloc_op)->relocate_op.remove_key = k;
-			(*reloc_op)->relocate_op.remove_value = (V)((K)res);
+			(*reloc_op)->relocate_op.remove_value = curr->value;
 			(*reloc_op)->relocate_op.replace_key = replace->key;
 			(*reloc_op)->relocate_op.replace_value = replace->value;
 	
