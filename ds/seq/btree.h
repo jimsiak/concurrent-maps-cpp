@@ -487,9 +487,7 @@ private:
 				bst_violations++;
 			}
 
-		//> min != 0 is there to allow unsigned keys to be used and
-		//> 0 value to represent KEY_MIN
-		if ( (min != 0 && n->keys[0] <= min) || n->keys[n->no_keys-1] > max) {
+		if ( (min != MIN_KEY && n->keys[0] <= min) || n->keys[n->no_keys-1] > max) {
 			bst_violations++;
 		}
 
@@ -535,7 +533,7 @@ private:
 		leaves_level = -1;
 		leaves_at_same_level = 1;
 	
-		validate_rec(root, 0, BTREE_MAX_KEY, 0);
+		validate_rec(root, MIN_KEY, BTREE_MAX_KEY, 0);
 	
 		check_bst = (bst_violations == 0);
 		check_btree_properties = (null_children_violations == 0) &&

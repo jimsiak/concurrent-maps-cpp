@@ -688,8 +688,8 @@ private:
 		}
 	
 		printf("%llu (%llu, %llu)\n", root->key,
-		       root->prev ? root->prev->key : 0,
-		       root->succ ? root->succ->key : 0);
+		       root->prev ? root->prev->key : this->INF_KEY,
+		       root->succ ? root->succ->key : this->INF_KEY);
 	
 		print_rec(root->left, level + 1);
 	}

@@ -27,8 +27,8 @@
 #include "Log.h"
 #include "lock.h"
 
-#define MAX_KEY_DRACHSLER ULLONG_MAX
-#define MIN_KEY_DRACHSLER 0
+#define MAX_KEY_DRACHSLER MAX_KEY
+#define MIN_KEY_DRACHSLER MIN_KEY
 
 #define DRACHSLER_MARK(n) ((n)->marked = true)
 #define DRACHSLER_IS_MARKED(n) ((n)->marked)

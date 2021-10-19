@@ -168,7 +168,7 @@ struct abtree_Node {
     volatile int tag;
     volatile int size; // number of keys; positive for internal, negative for leaves
 
-    volatile K keys[DEGREE];
+    K keys[DEGREE];
     void * volatile ptrs[DEGREE];
     
     bool isLeaf() {

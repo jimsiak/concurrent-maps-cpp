@@ -45,63 +45,63 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 
 	//> Sequential data structures
 	if (type == "treap")
-		map = new Treap<K,V>(-1, NULL, 88);
+		map = new Treap<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-int")
-		map = new bst_unb_int<K,V>(-1, NULL, 88);
+		map = new bst_unb_int<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-pext")
-		map = new bst_unb_pext<K,V>(-1, NULL, 88);
+		map = new bst_unb_pext<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-ext")
-		map = new bst_unb_ext<K,V>(-1, NULL, 88);
+		map = new bst_unb_ext<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-avl-int")
-		map = new bst_avl_int<K,V>(-1, NULL, 88);
+		map = new bst_avl_int<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-avl-pext")
-		map = new bst_avl_pext<K,V>(-1, NULL, 88);
+		map = new bst_avl_pext<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-avl-ext")
-		map = new bst_avl_ext<K,V>(-1, NULL, 88);
+		map = new bst_avl_ext<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-rbt-int")
-		map = new bst_rbt_int<K,V>(-1, NULL, 88);
+		map = new bst_rbt_int<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-rbt-ext")
-		map = new bst_rbt_ext<K,V>(-1, NULL, 88);
+		map = new bst_rbt_ext<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "btree")
-		map = new btree<K,V>(-1, NULL, 88);
+		map = new btree<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "abtree")
-		map = new abtree<K,V>(-1, NULL, 88);
+		map = new abtree<K,V>(MAX_KEY, NULL, 88);
 	//> Lock-based
 	else if (type == "bst-avl-bronson")
-		map = new bst_avl_bronson<K,V>(-1, NULL, 88);
+		map = new bst_avl_bronson<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-avl-drachsler")
-		map = new bst_avl_drachsler<K,V>(-1, NULL, 88);
+		map = new bst_avl_drachsler<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-avl-cf")
-		map = new bst_avl_cf<K,V>(-1, NULL, 88);
+		map = new bst_avl_cf<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-ext-hohlocks")
-		map = new bst_unb_ext_hohlocks<K,V>(-1, NULL, 88);
+		map = new bst_unb_ext_hohlocks<K,V>(MAX_KEY, NULL, 88);
 	//> Lock-free
 	else if (type == "bst-unb-natarajan")
-		map = new bst_unb_natarajan<K,V>(-1, NULL, 88);
+		map = new bst_unb_natarajan<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-ellen")
-		map = new bst_unb_ellen<K,V>(-1, NULL, 88);
+		map = new bst_unb_ellen<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-howley")
-		map = new bst_unb_howley<K,V>(-1, NULL, 88);
+		map = new bst_unb_howley<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "ist-brown")
-		map = new ist_brown<K,V>(-1, NULL, 88);
+		map = new ist_brown<K,V>(MAX_KEY, NULL, 88);
 	// This is an LLX/SCX based, and it should be similar to bst-brown-3path
 	else if (type == "abtree-brown")
-		map = new abtree_brown<K,V>(-1, NULL, 88);
+		map = new abtree_brown<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "abtree-brown-3path")
-		map = new abtree_brown_3path<K,V>(-1, NULL, 88);
+		map = new abtree_brown_3path<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "abtree-brown-llxscx")
-		map = new abtree_brown_3path<K,V>(-1, NULL, 88, -1, -1);
+		map = new abtree_brown_3path<K,V>(MAX_KEY, NULL, 88, -1, -1);
 	else if (type == "bst-brown-3path")
-		map = new bst_brown<K,V>(-1, NULL, 88);
+		map = new bst_brown<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-brown-llxscx")
-		map = new bst_brown<K,V>(-1, NULL, 88, -1, -1);
+		map = new bst_brown<K,V>(MAX_KEY, NULL, 88, -1, -1);
 	else if (type == "bwtree-wang")
-		map = new bwtree_wang<K,V>(-1, NULL, 88);
+		map = new bwtree_wang<K,V>(MAX_KEY, NULL, 88);
 	//> COP-based
 	else if (type == "avl-int-cop")
-		map = new avl_int_cop<K,V>(-1, NULL, 88);
+		map = new avl_int_cop<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "avl-ext-cop")
-		map = new avl_ext_cop<K,V>(-1, NULL, 88);
+		map = new avl_ext_cop<K,V>(MAX_KEY, NULL, 88);
 	else
 		map = NULL;
 
@@ -112,13 +112,13 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 
 	if (sync_type == "cg-htm" || sync_type == "cg-rwlock"
 	                          || sync_type == "cg-spinlock")
-		map = new cg_ds<K,V>(-1, NULL, 88, map, sync_type);
+		map = new cg_ds<K,V>(MAX_KEY, NULL, 88, map, sync_type);
 	else if (sync_type == "ca-locks")
-		map = new ca_locks<K,V>(-1, NULL, 88, map);
+		map = new ca_locks<K,V>(MAX_KEY, NULL, 88, map);
 	else if (sync_type == "rcu-htm")
-		map = new rcu_htm<K,V>(-1, NULL, 88, map);
+		map = new rcu_htm<K,V>(MAX_KEY, NULL, 88, map);
 	else if (sync_type == "rcu-sgl")
-		map = new rcu_htm<K,V>(-1, NULL, 88, map, 0);
+		map = new rcu_htm<K,V>(MAX_KEY, NULL, 88, map, 0);
 
 	return map;
 }

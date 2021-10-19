@@ -19,7 +19,7 @@
 #define STATE_IFLAG 2
 #define STATE_MARK 3
 
-#define ELLEN_MAX_KEY 999999999
+#define ELLEN_MAX_KEY (this->INF_KEY)
 #define ELLEN_INF2 (ELLEN_MAX_KEY)
 #define ELLEN_INF1 (ELLEN_MAX_KEY - 1)
 

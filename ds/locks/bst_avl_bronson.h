@@ -624,9 +624,9 @@ private:
 		_depth++;
 	
 		/* BST violation? */
-		if (range_min != 0 && root->key < range_min)
+		if (range_min != MIN_KEY && root->key < range_min)
 			bst_violations++;
-		if (range_max != 0 && root->key > range_max)
+		if (range_max != MIN_KEY && root->key > range_max)
 			bst_violations++;
 	
 		/* We found a path (a node with at least one sentinel child). */

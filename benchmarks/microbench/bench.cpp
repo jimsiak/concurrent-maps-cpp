@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <pthread.h>
+#include <limits.h> //> For UINT_MAX
 
 #include "Timer.h"
 
@@ -9,9 +10,9 @@
 #define map_val_t void *
 #define map_t Map<map_key_t, map_val_t>
 
-#include "../../ds/map_factory.h"
 #include "Keygen.h"
 #include "key/key.h"
+#include "../../ds/map_factory.h"
 
 #include "clargs.h"
 #include "thread_data.h"
@@ -71,7 +72,7 @@ void *thread_fn(void *arg)
 		} else if (choice < clargs.lookup_frac + clargs.rquery_frac) {
 			//> Range-Query
 			data->operations_performed[OPS_RQUERY]++;
-			unsigned long long key2 = key + 10000;
+			map_key_t key2 = key + 10000;
 			std::vector<std::pair<map_key_t, map_val_t>> kv_pairs;
 			ret = map->rangeQuery(tid, key, key2, kv_pairs);
 			data->operations_succeeded[OPS_RQUERY] += ret;
@@ -118,7 +119,7 @@ static inline int map_warmup(map_t *map, int nr_nodes, int max_key,
                              unsigned int seed)
 {
     int nodes_inserted = 0;
-	unsigned long long key;
+	map_key_t key;
 	map_val_t ret;
 	KeyGeneratorUniform keygen(seed, max_key);
 

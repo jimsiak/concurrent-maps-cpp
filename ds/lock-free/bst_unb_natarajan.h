@@ -11,7 +11,7 @@
 
 #define CAS_PTR(a,b,c) __sync_val_compare_and_swap(a,b,c)
 
-#define MAX_KEY_NATARAJAN 99999999LLU
+#define MAX_KEY_NATARAJAN (this->INF_KEY)
 #define INF2 (MAX_KEY_NATARAJAN)
 #define INF1 (MAX_KEY_NATARAJAN - 1)
 #define INF0 (MAX_KEY_NATARAJAN - 2)

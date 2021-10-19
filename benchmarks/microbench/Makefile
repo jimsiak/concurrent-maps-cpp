@@ -1,6 +1,8 @@
 #GPP = g++
 GPP = /various/common_tools/gcc-5.3.0/bin/g++
 
+#KEY_TYPE = MAP_KEY_TYPE_CSTR
+#KEY_TYPE = MAP_KEY_TYPE_CPPULLONG
 KEY_TYPE = MAP_KEY_TYPE_ULLONG
 #KEY_TYPE = MAP_KEY_TYPE_INT
 

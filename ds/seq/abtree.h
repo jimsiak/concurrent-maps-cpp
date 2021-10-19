@@ -629,9 +629,7 @@ private:
 			if (n->keys[i] <= cur_min)
 				bst_violations++;
 
-		//> min != 0 is there to allow unsigned keys to be used and
-		//> 0 value to represent KEY_MIN
-		if ( (min != 0 && n->keys[0] < min) || n->keys[n->no_keys-1] > max)
+		if ( (min != MIN_KEY && n->keys[0] < min) || n->keys[n->no_keys-1] > max)
 			bst_violations++;
 
 		if (!n->leaf)
@@ -677,7 +675,7 @@ private:
 		leaf_level_max = -1; leaf_level_min = 99999;
 		leaves_at_same_level = 1;
 
-		validate_rec(root, 0, ABTREE_MAX_KEY, 0);
+		validate_rec(root, MIN_KEY, ABTREE_MAX_KEY, 0);
 
 		check_bst = (bst_violations == 0);
 		check_abtree_properties = (null_children_violations == 0) &&
