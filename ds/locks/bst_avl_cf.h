@@ -66,7 +66,7 @@ private:
 			this->value = value;
 			this->left = this->right = NULL;
 			INIT_LOCK(&lock);
-			this->del = this->rem = false;
+			this->del = this->rem = 0;
 			this->left_h = this->right_h = this->local_h = 0;
 		};
 	};
@@ -281,7 +281,6 @@ private:
 	static void *background_struct_adaptation(void *arg)
 	{
 		bst_avl_cf *tree = (bst_avl_cf *)arg;
-		volatile int i = 0;
 	
 		while (!tree->stop_maint_thread) {
 			tree->restructure_node(tree->root, tree->root->right, 0);
