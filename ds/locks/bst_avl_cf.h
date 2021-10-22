@@ -276,7 +276,7 @@ private:
 		}
 	}
 	
-	volatile int stop_maint_thread;
+	int stop_maint_thread;
 	pthread_t maint_thread;
 	static void *background_struct_adaptation(void *arg)
 	{
@@ -284,13 +284,9 @@ private:
 	
 		while (!tree->stop_maint_thread) {
 			tree->restructure_node(tree->root, tree->root->right, 0);
-	//		usleep(200000);
-			usleep(2000);
+//			usleep(500);
 		}
 	
-		//> Do some more restructure before exiting
-	//	for (i=0; i < 10; i++)
-	//		restructure_node(avl, avl->root, avl->root->right, 0);
 		return NULL;
 	}
 	
@@ -584,7 +580,7 @@ const std::pair<V,bool> BST_AVL_CF_FUNCT::remove(const int tid, const K& key)
 BST_AVL_CF_TEMPL
 bool BST_AVL_CF_FUNCT::validate()
 {
-	for (int i=0; i < 10; i++) restructure_node(root, root->right, 0);
 	stop_maintenance_thread();
+	for (int i=0; i < 10; i++) restructure_node(root, root->right, 0);
 	return validate_helper();
 }
