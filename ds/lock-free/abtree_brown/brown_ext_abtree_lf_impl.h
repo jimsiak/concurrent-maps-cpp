@@ -38,7 +38,7 @@
 
 #include "scx_provider.h"
 
-#define ABTREE_DEGREE 64
+#define ABTREE_DEGREE 16
 #define MAX_NODE_DEPENDENCIES_PER_SCX 4
 #define ABTREE_ENABLE_DESTRUCTOR
 
@@ -287,6 +287,19 @@ private:
 	    prov->initNode(newnode);
 	    return newnode;
 	}
+
+	const V lookup_helper(const int tid, const K& key)
+	{
+	    V result;
+	    Node *l = root->ptrs[0];
+
+	    while (!l->isLeaf()) l = l->ptrs[l->getChildIndex(key)];
+
+	    int index = l->getKeyIndex(key);
+	    if (index < l->getKeyCount()) return (V)l->ptrs[index];
+	    else                          return this->NO_VALUE;
+	}
+
 
 	V insert_helper(const int tid, const K& key, const V& val, const bool replace)
 	{
@@ -996,28 +1009,15 @@ private:
 ABTREE_BROWN_TEMPL
 bool ABTREE_BROWN_FUNCT::contains(const int tid, const K& key)
 {
-    return find(tid, key).second;
+	const V ret = lookup_helper(tid, key);
+	return (ret != this->NO_VALUE);
 }
 
 ABTREE_BROWN_TEMPL
 const std::pair<V,bool> ABTREE_BROWN_FUNCT::find(const int tid, const K& key)
 {
-    std::pair<V,bool> result;
-//    auto guard = recordmgr->getGuard(tid, true);
-    Node *l = root->ptrs[0];
-    while (!l->isLeaf()) {
-        int ix = l->getChildIndex(key);
-        l = l->ptrs[ix];
-    }
-    int index = l->getKeyIndex(key);
-    if (index < l->getKeyCount() && l->keys[index] == key) {
-        result.first = (V)l->ptrs[index];
-        result.second = true;
-    } else {
-        result.first = this->NO_VALUE;
-        result.second = false;
-    }
-    return result;
+	const V ret = lookup_helper(tid, key);
+	return std::pair<V,bool>(ret, ret != this->NO_VALUE);
 }
 
 

@@ -206,13 +206,12 @@ struct abtree_Node {
 };
 
 
-template <typename K, typename V, int DEGREE=16>
+template <typename K, typename V, int DEGREE=16, int MIN_DEGREE=6>
 class abtree_brown_3path : public Map<K,V> {
 
 private:
 	const int MAX_FAST_HTM_RETRIES;
 	const int MAX_SLOW_HTM_RETRIES;
-	const int MIN_DEGREE = 8;
 
 	abtree_Node<DEGREE,K> *root;
 	char pad0[64];
@@ -2510,8 +2509,8 @@ private:
 
 };
 
-#define ABTREE_BROWN_3PATH_TEMPL template<typename K, typename V, int DEGREE>
-#define ABTREE_BROWN_3PATH_FUNCT abtree_brown_3path<K,V,DEGREE>
+#define ABTREE_BROWN_3PATH_TEMPL template<typename K, typename V, int DEGREE, int MIN_DEGREE>
+#define ABTREE_BROWN_3PATH_FUNCT abtree_brown_3path<K,V,DEGREE,MIN_DEGREE>
 
 ABTREE_BROWN_3PATH_TEMPL
 bool ABTREE_BROWN_3PATH_FUNCT::contains(const int tid, const K& key)
