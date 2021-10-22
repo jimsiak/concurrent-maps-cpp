@@ -435,7 +435,7 @@ private:
 	int total_paths, total_nodes, marked_nodes;
 	int bst_violations, avl_violations;
 	int min_path_len, max_path_len;
-	void validate_rec(node_t *root, int _th)
+	void validate_rec(node_t *root, int curr_height)
 	{
 		if (!root)
 			return;
@@ -444,7 +444,7 @@ private:
 		node_t *right = root->right;
 	
 		total_nodes++;
-		_th++;
+		curr_height++;
 		if (root->del) marked_nodes++;
 	
 		/* BST violation? */
@@ -457,10 +457,10 @@ private:
 		if (!left || !right) {
 			total_paths++;
 	
-			if (_th <= min_path_len)
-				min_path_len = _th;
-			if (_th >= max_path_len)
-				max_path_len = _th;
+			if (curr_height <= min_path_len)
+				min_path_len = curr_height;
+			if (curr_height >= max_path_len)
+				max_path_len = curr_height;
 		}
 	
 		/* AVL violation? */
@@ -469,8 +469,8 @@ private:
 			avl_violations++;
 	
 		/* Check subtrees. */
-		if (left)  validate_rec(left, _th);
-		if (right) validate_rec(right, _th);
+		if (left)  validate_rec(left, curr_height);
+		if (right) validate_rec(right, curr_height);
 	}
 	
 	int validate_helper()
