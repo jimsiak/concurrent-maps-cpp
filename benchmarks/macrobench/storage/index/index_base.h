@@ -8,6 +8,8 @@ class table_t;
 
 #define KEY_TYPE idx_key_t
 #define VALUE_TYPE itemid_t *
+#define MIN_KEY 0
+#define MAX_KEY UINT64_MAX
 #define __NO_KEY -1
 #define __NO_VALUE NULL
 #define _TABSZ (1<< 20)

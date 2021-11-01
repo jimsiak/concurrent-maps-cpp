@@ -105,9 +105,9 @@ int kv_compare(const void * _a, const void * _b) {
          : 0;
 }
 
-volatile char padding0[PREFETCH_SIZE_BYTES];
-long version[MAX_TID_POW2*PREFETCH_SIZE_WORDS];
-volatile char padding1[PREFETCH_SIZE_BYTES];
+static volatile char padding0[PREFETCH_SIZE_BYTES];
+static long version[MAX_TID_POW2*PREFETCH_SIZE_WORDS];
+static volatile char padding1[PREFETCH_SIZE_BYTES];
 #define VERSION_NUMBER(tid) (version[(tid)*PREFETCH_SIZE_WORDS])
 #define INIT_VERSION_NUMBER(tid) (VERSION_NUMBER(tid) = ((tid << 1) | 1))
 #define NEXT_VERSION_NUMBER(tid) (VERSION_NUMBER(tid) += (MAX_TID_POW2 << 1))
@@ -428,7 +428,7 @@ private:
 	    return result;
 	}
 
-	bool insert_fast(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, void ** const result)
+	bool insert_fast(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, V * const result)
 	{
 	    abtree_Node<DEGREE,K> * p;
 	    abtree_Node<DEGREE,K> * l;
@@ -468,7 +468,7 @@ private:
 	        found = (keyindexl < nkeysl);
 	        if (found) {
 	            if (!onlyIfAbsent) l->ptrs[keyindexl] = val;
-                *result = l->ptrs[keyindexl];
+                *result = (V)l->ptrs[keyindexl];
                 _xend();
                 *shouldRebalance = false;
                 return true;
@@ -489,7 +489,7 @@ private:
 	
 	                for (int i=0;i<nkeysl;++i) {
 	                    tosort[i].key = l->keys[i];
-	                    tosort[i].val = l->ptrs[i];
+	                    tosort[i].val = (V)l->ptrs[i];
 	                }
 	                tosort[nkeysl].key = key;
 	                tosort[nkeysl].val = val;
@@ -543,7 +543,7 @@ private:
 	    }
 	}
 
-	bool insert_middle(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, void ** const result)
+	bool insert_middle(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, V * const result)
 	{
 	tXN1: int attempts = MAX_FAST_HTM_RETRIES;
 	    int status = _xbegin();
@@ -574,7 +574,7 @@ private:
 	        bool found = (keyindexl < nkeysl);
 	        if (found) {
 	            if (onlyIfAbsent) {
-	                *result = l->ptrs[keyindexl];
+	                *result = (V)l->ptrs[keyindexl];
 	                _xend();
 	                *shouldRebalance = false;
 	                return true;
@@ -602,7 +602,7 @@ private:
 	                info->field = &p->ptrs[lindex];
 	                info->newNode = newNode;
 	
-	                *result = l->ptrs[keyindexl];
+	                *result = (V)l->ptrs[keyindexl];
 	                *shouldRebalance = false;
 	            }
 	        } else {
@@ -650,7 +650,7 @@ private:
 	                kvpair<K,V> tosort[nkeysl+1];
 	                for (int i=0;i<nkeysl;++i) {
 	                    tosort[i].key = l->keys[i];
-	                    tosort[i].val = l->ptrs[i];
+	                    tosort[i].val = (V)l->ptrs[i];
 	                }
 	                tosort[nkeysl].key = key;
 	                tosort[nkeysl].val = val;
@@ -708,7 +708,7 @@ private:
 	    }
 	}
 
-	bool insert_fallback(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, void ** const result)
+	bool insert_fallback(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, const V& val, const bool onlyIfAbsent, bool * const shouldRebalance, V * const result)
 	{
 	    abtree_Node<DEGREE,K> * p = root;
 	    abtree_Node<DEGREE,K> * l = (abtree_Node<DEGREE,K> *) root->ptrs[0];
@@ -734,7 +734,7 @@ private:
 	    bool found = (keyindexl < nkeysl);
 	    if (found) {
 	        if (onlyIfAbsent) {
-	            *result = l->ptrs[keyindexl];
+	            *result = (V)l->ptrs[keyindexl];
 	            *shouldRebalance = false;
 	            return true;
 	        } else {
@@ -761,7 +761,7 @@ private:
 	            info->field = &p->ptrs[lindex];
 	            info->newNode = newNode;
 	            
-	            *result = l->ptrs[keyindexl];
+	            *result = (V)l->ptrs[keyindexl];
 	            *shouldRebalance = false;
 	        }
 	    } else {
@@ -809,7 +809,7 @@ private:
 	            kvpair<K,V> tosort[nkeysl+1];
 	            for (int i=0;i<nkeysl;++i) {
 	                tosort[i].key = l->keys[i];
-	                tosort[i].val = l->ptrs[i];
+	                tosort[i].val = (V)l->ptrs[i];
 	            }
 	            tosort[nkeysl].key = key;
 	            tosort[nkeysl].val = val;
@@ -1656,7 +1656,7 @@ private:
 	        tosort[k1++].key = left->keys[i];
 	    }
 	    for (int i=0;i<left->getABDegree();++i) {
-	        tosort[k2++].val = left->ptrs[i];
+	        tosort[k2++].val = (V)left->ptrs[i];
 	    }
 	    if (!left->isLeaf())
 			tosort[k1++].key = p->keys[leftindex];
@@ -1664,7 +1664,7 @@ private:
 	        tosort[k1++].key = right->keys[i];
 	    }
 	    for (int i=0;i<right->getABDegree();++i) {
-	        tosort[k2++].val = right->ptrs[i];
+	        tosort[k2++].val = (V)right->ptrs[i];
 	    }
 	    //assert(k1 == sz+left->isLeaf()); // only holds in general if something like opacity is satisfied
 	    assert(!gp->tag);
@@ -2140,7 +2140,7 @@ private:
 	        tosort[k1++].key = left->keys[i];
 	    }
 	    for (int i=0;i<left->getABDegree();++i) {
-	        tosort[k2++].val = left->ptrs[i];
+	        tosort[k2++].val = (V)left->ptrs[i];
 	    }
 	    if (!left->isLeaf())
 			tosort[k1++].key = p->keys[leftindex];
@@ -2148,7 +2148,7 @@ private:
 	        tosort[k1++].key = right->keys[i];
 	    }
 	    for (int i=0;i<right->getABDegree();++i) {
-	        tosort[k2++].val = right->ptrs[i];
+	        tosort[k2++].val = (V)right->ptrs[i];
 	    }
 	    //assert(k1 == sz+left->isLeaf()); // only holds in general if something like opacity is satisfied
 	    assert(!gp->tag);
