@@ -21,9 +21,11 @@ RC tpcc_wl::init()
 	#else
 	path += "TPCC_full_schema.txt";
 	#endif
+
 	cout << "reading schema file: " << path << std::endl;
 	init_schema(path.c_str());
 	cout << "TPCC schema initialized\n";
+
 	next_tid = 0;
 	init_table();
 	next_tid = 0;
@@ -54,55 +56,53 @@ void tpcc_wl::setbench_deinit()
 RC tpcc_wl::init_schema(const char * schema_file)
 {
 	workload::init_schema(schema_file);
-	t_warehouse = tables["WAREHOUSE"];
-	t_district = tables["DISTRICT"];
-	t_customer = tables["CUSTOMER"];
-	t_history = tables["HISTORY"];
-	t_neworder = tables["NEW-ORDER"];
-	t_order = tables["ORDER"];
-	t_orderline = tables["ORDER-LINE"];
-	t_item = tables["ITEM"];
-	t_stock = tables["STOCK"];
 
-	i_neworder = indexes["NEWORDER_IDX"];
-	i_order = indexes["ORDER_IDX"];
-	i_orderline = indexes["ORDERLINE_IDX"];
-	i_orderline_wd = indexes["ORDERLINE_WD_IDX"];
-	i_item = indexes["ITEM_IDX"];
-	i_warehouse = indexes["WAREHOUSE_IDX"];
-	i_district = indexes["DISTRICT_IDX"];
-	i_customer_id = indexes["CUSTOMER_ID_IDX"];
+	t_warehouse = tables["WAREHOUSE"];
+	t_district  = tables["DISTRICT"];
+	t_customer  = tables["CUSTOMER"];
+	t_history   = tables["HISTORY"];
+	t_neworder  = tables["NEW-ORDER"];
+	t_order     = tables["ORDER"];
+	t_orderline = tables["ORDER-LINE"];
+	t_item      = tables["ITEM"];
+	t_stock     = tables["STOCK"];
+
+	i_neworder      = indexes["NEWORDER_IDX"];
+	i_order         = indexes["ORDER_IDX"];
+	i_orderline     = indexes["ORDERLINE_IDX"];
+	i_orderline_wd  = indexes["ORDERLINE_WD_IDX"];
+	i_item          = indexes["ITEM_IDX"];
+	i_warehouse     = indexes["WAREHOUSE_IDX"];
+	i_district      = indexes["DISTRICT_IDX"];
+	i_customer_id   = indexes["CUSTOMER_ID_IDX"];
 	i_customer_last = indexes["CUSTOMER_LAST_IDX"];
-	i_stock = indexes["STOCK_IDX"];
+	i_stock         = indexes["STOCK_IDX"];
 
 	return RCOK;
 }
 
 RC tpcc_wl::init_table()
 {
+	/******** fill in data ************
+	**  data filling process:
+	** - item
+	** - wh
+	** 	- stock
+	**  	- dist
+	**   	- cust
+	** 	  	- hist
+	** 		- order 
+	** 		- new order
+	** 		- order line
+	**********************************/
 	num_wh = g_num_wh;
 
-	/******** fill in data ************/
-	// data filling process:
-	//- item
-	//- wh
-	//	- stock
-	// 	- dist
-	//  	- cust
-	//	  	- hist
-	//		- order 
-	//		- new order
-	//		- order line
-	/**********************************/
-//	RLU_INIT(RLU_TYPE_FINE_GRAINED, 1);
-	tpcc_buffer = new drand48_data * [g_num_wh];
-	pthread_t * p_thds = new pthread_t[g_num_wh /*- 1*/];
-	for (uint32_t i = 0; i<g_num_wh /*- 1*/; i++)
+	tpcc_buffer = new drand48_data *[g_num_wh];
+	pthread_t *p_thds = new pthread_t[g_num_wh];
+	for (uint32_t i = 0; i < g_num_wh; i++)
 		pthread_create(&p_thds[i], NULL, threadInitWarehouse, this);
-	/*threadInitWarehouse(this);*/
-	for (uint32_t i = 0; i<g_num_wh /*- 1*/; i++)
+	for (uint32_t i = 0; i < g_num_wh; i++)
 		pthread_join(p_thds[i], NULL);
-//	RLU_FINISH();
 	delete[] p_thds;
 
 	printf("TPCC Data Initialization Complete!\n");
@@ -121,13 +121,13 @@ RC tpcc_wl::get_txn_man(txn_man *& txn_manager, thread_t * h_thd)
 void tpcc_wl::init_tab_item()
 {
 	uint64_t perm[g_max_items];
-	init_permutation(perm, g_max_items, 1); //wid = 1 tid =0 
+	init_permutation(perm, g_max_items, 1);
 	#ifdef SKIP_PERMUTATIONS
-	for (unsigned i = 0; i<g_max_items; ++i) perm[i] = i+1;
+	for (unsigned i = 0; i < g_max_items; ++i) perm[i] = i+1;
 	#endif
-	for (UInt32 i = 0; i<g_max_items; i++) {
+	for (UInt32 i = 0; i < g_max_items; i++) {
 		UInt32 key = (UInt32) perm[i];
-		row_t * row;
+		row_t *row;
 		uint64_t row_id;
 		t_item->get_new_row(row, 0, row_id);
 		row->set_primary_key(key);
@@ -140,8 +140,7 @@ void tpcc_wl::init_tab_item()
 		char data[51]; // FIXED: this was too small in the original DBx1000 implementation, causing nasty overflows!
 		MakeAlphaString(26, 50, data, 0);
 		// TODO in TPCC, "original" should start at a random position
-		if (RAND(10, 0)==0)
-			strcpy(data, "original");
+		if (RAND(10, 0) == 0) strcpy(data, "original");
 		row->set_value(I_DATA, data);
 
 		index_insert(i_item, itemKey(key), row, 0);
@@ -470,39 +469,32 @@ void tpcc_wl::init_permutation(uint64_t * perm_c_id, uint64_t size, uint64_t wid
 
 void *tpcc_wl::threadInitWarehouse(void *This)
 {
-	tpcc_wl * wl = (tpcc_wl *) This;
+	tpcc_wl *wl = (tpcc_wl *)This;
 
 	int __tid = ATOM_FETCH_ADD(wl->next_tid, 1);
 	tid = __tid;
 
 	thread_pinning::bindThread(__tid);
-//	urcu::registerThread(__tid);
-//	rlu_self = &rlu_tdata[__tid];
-//	RLU_THREAD_INIT(rlu_self);
 	
 	uint32_t wid = __tid+1;
-//	cout<<"TPCC_WL DEBUG: tpcc_buffer="<<(uintptr_t) tpcc_buffer<<" __tid="<<__tid<<endl;
-	tpcc_buffer[__tid] = (drand48_data *) _mm_malloc(sizeof (drand48_data), ALIGNMENT);
-	assert((uint64_t) __tid<g_num_wh);
+	tpcc_buffer[__tid] = (drand48_data *)_mm_malloc(sizeof (drand48_data), ALIGNMENT);
+	assert((uint64_t) __tid < g_num_wh);
 	srand48_r(wid, tpcc_buffer[__tid]);
 
 	wl->initThread(__tid);
 
-	if (__tid==0)
-		wl->init_tab_item();
+	if (__tid == 0) wl->init_tab_item();
 	wl->init_tab_wh(wid);
 	wl->init_tab_dist(wid);
 	wl->init_tab_stock(wid);
-	for (uint64_t did = 1; did<=DIST_PER_WARE; did++) {
+	for (uint64_t did = 1; did <= DIST_PER_WARE; did++) {
 		wl->init_tab_cust(did, wid);
 		wl->init_tab_order(did, wid);
-		for (uint64_t cid = 1; cid<=g_cust_per_dist; cid++)
+		for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++)
 			wl->init_tab_hist(cid, did, wid);
 	}
 
 	wl->deinitThread(__tid);
 
-//	RLU_THREAD_FINISH(rlu_self);
-//	urcu::unregisterThread();
 	return NULL;
 }

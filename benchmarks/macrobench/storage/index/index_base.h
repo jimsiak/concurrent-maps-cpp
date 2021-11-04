@@ -58,14 +58,11 @@ public:
     int index_id;
     
     index_base() {
-//        std::cout<<"start index_base()"<<std::endl;
         assert(sizeof(LockTab) == sizeof(vwlock)*_TABSZ);
         memset((void *) LockTab, 0, sizeof(LockTab));
-        //std::cout<<"    sizeof(LockTab)="<<sizeof(LockTab)<<std::endl;
         memset(numInserts, 0, MAX_THREADS_POW2*PREFETCH_SIZE_WORDS*sizeof(unsigned long long));
         memset(numReads, 0, MAX_THREADS_POW2*PREFETCH_SIZE_WORDS*sizeof(unsigned long long));
         debug_init_is_done = 0xCAFEBABE;
-//        std::cout<<"  end index_base()"<<std::endl;
     }
 
 //    virtual bool index_exist(KEY_TYPE key) = 0; // check if the key exist.
@@ -93,10 +90,7 @@ public:
     }
     
     // TODO implement index_remove
-
-    virtual RC index_remove(KEY_TYPE key) {
-        return RCOK;
-    }
+    virtual RC index_remove(KEY_TYPE key) { return RCOK; }
     
     virtual void print_stats(){}
     virtual size_t getNodeSize(){return 0;}
@@ -148,5 +142,5 @@ public:
 protected:
 
     // the index in on "table". The key is the merged key of "fields"
-    table_t * table;
+    table_t *table;
 };

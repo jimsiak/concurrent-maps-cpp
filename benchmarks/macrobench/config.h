@@ -37,7 +37,7 @@
 // [PART_ALLOC] 
 #define PART_ALLOC 					false
 #define MEM_SIZE					(1UL << 30) 
-#define NO_FREE_B						false
+#define NO_FREE_B					false
 
 /***********************************************/
 // Concurrency Control
@@ -138,7 +138,7 @@
 #define TPCC_ACCESS_ALL 			true
 #define WH_UPDATE					true
 #define NUM_WH 						10
-//
+
 enum TPCCTxnType {TPCC_ALL, 
 				TPCC_PAYMENT, 
 				TPCC_NEW_ORDER, 
