@@ -22,13 +22,27 @@ RC tpcc_wl::init()
 	path += "TPCC_full_schema.txt";
 	#endif
 
-	cout << "reading schema file: " << path << std::endl;
+	cout << "Reading schema file: " << path << std::endl;
 	init_schema(path.c_str());
 	cout << "TPCC schema initialized\n";
 
+	printf("Initializing TPCC data!\n");
 	next_tid = 0;
 	init_table();
 	next_tid = 0;
+	printf("TPCC Data Initialization Complete!\n");
+
+//	#define FUNC() validate()
+//	i_neworder->FUNC();
+//	i_order->FUNC();
+//	i_orderline->FUNC();
+//	i_orderline_wd->FUNC();
+//	i_item->FUNC();
+//	i_warehouse->FUNC();
+//	i_district->FUNC();
+//	i_customer_id->FUNC();
+//	i_customer_last->FUNC();
+//	i_stock->FUNC();
 
 	return RCOK;
 }
@@ -105,7 +119,6 @@ RC tpcc_wl::init_table()
 		pthread_join(p_thds[i], NULL);
 	delete[] p_thds;
 
-	printf("TPCC Data Initialization Complete!\n");
 	return RCOK;
 }
 
@@ -149,7 +162,7 @@ void tpcc_wl::init_tab_item()
 
 void tpcc_wl::init_tab_wh(uint32_t wid)
 {
-	assert(wid>=1&&wid<=g_num_wh);
+	assert(wid >= 1 && wid <= g_num_wh);
 	row_t * row;
 	uint64_t row_id;
 	t_warehouse->get_new_row(row, 0, row_id);

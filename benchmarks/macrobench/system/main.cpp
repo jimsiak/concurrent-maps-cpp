@@ -22,7 +22,7 @@ void do_cleanup(workload *);
 
 thread_t **m_thds;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	parser(argc, argv);
 
@@ -40,26 +40,26 @@ int main(int argc, char* argv[])
 	switch (WORKLOAD) {
 		case YCSB :
 			m_wl = new ycsb_wl;
-			printf("running YCSB workload\n");
+			printf("Running YCSB workload\n");
 			break;
 		case TPCC :
 			m_wl = new tpcc_wl;
 			#ifdef READ_ONLY
-			printf("running READ ONLY TPCC workload\n");
+			printf("Running READ ONLY TPCC workload\n");
 			#else
-			printf("running TPCC workload\n");
+			printf("Running TPCC workload\n");
 			#endif
 			break;
 		case TEST :
 			m_wl = new TestWorkload;
 			((TestWorkload *)m_wl)->tick();
-			printf("running TEST workload\n");
+			printf("Running TEST workload\n");
 			break;
 		default:
 			assert(false);
 	}
 	m_wl->init();
-	printf("workload initialized!\n");
+	printf("Workload initialized!\n");
 
 	print_ccalg_and_isolation_level();
 
@@ -76,8 +76,7 @@ int main(int argc, char* argv[])
 	// query_queue should be the last one to be initialized!!!
 	// because it collects txn latency
 	query_queue = (Query_queue *) _mm_malloc(sizeof(Query_queue), ALIGNMENT);
-	if (WORKLOAD != TEST)
-		query_queue->init(m_wl);
+	if (WORKLOAD != TEST) query_queue->init(m_wl);
 	pthread_barrier_init(&warmup_bar, NULL, g_thread_cnt);
 	printf("query_queue initialized!\n");
 
@@ -94,10 +93,8 @@ int main(int argc, char* argv[])
 
 	if (WARMUP > 0) {
 		printf("WARMUP start!\n");
-		for (uint32_t i = 0; i < thd_cnt; i++) {
-			uint64_t vid = i;
-			pthread_create(&p_thds[i], NULL, f_warmup, (void *)vid);
-		}
+		for (uint32_t i = 0; i < thd_cnt; i++)
+			pthread_create(&p_thds[i], NULL, f_warmup, (void *)((uint64_t)i));
 		for (uint32_t i = 0; i < thd_cnt; i++)
 			pthread_join(p_thds[i], NULL);
 		printf("WARMUP finished!\n");
@@ -107,12 +104,10 @@ int main(int argc, char* argv[])
 	pthread_barrier_init(&warmup_bar, NULL, g_thread_cnt);
 
 	// spawn and run txns again.
-	int64_t starttime = get_server_clock();
 	for (uint32_t i = 0; i < thd_cnt; i++)
 		pthread_create(&p_thds[i], NULL, f_real, (void *)((uint64_t)i));
 	for (uint32_t i = 0; i < thd_cnt; i++)
 		pthread_join(p_thds[i], NULL);
-	int64_t endtime = get_server_clock();
 	
 	#ifdef VERBOSE_1
 	for (map<string,Index*>::iterator it = m_wl->indexes.begin(); it!=m_wl->indexes.end(); it++) {
@@ -125,13 +120,8 @@ int main(int argc, char* argv[])
 		it->second->print_stats();
 	}
 
-	if (WORKLOAD != TEST) {
-		printf("PASS! SimTime = %ld\n", endtime - starttime);
-		if (STATS_ENABLE) stats.print(m_wl);
-	} else {
-		((TestWorkload *)m_wl)->summarize();
-
-	}
+	if (WORKLOAD != TEST) if (STATS_ENABLE) stats.print(m_wl);
+	else ((TestWorkload *)m_wl)->summarize();
 
 	do_cleanup(m_wl);
 

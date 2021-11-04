@@ -76,17 +76,11 @@ public:
     //       If there was already a value (a preexisting linked list),
     //       then the insertion will replace that value and return it,
     //       and we will append that list to our newly inserted list.
-    virtual RC index_insert(KEY_TYPE key,
-                            VALUE_TYPE item,
-                            int part_id = -1) = 0;
-    virtual RC index_read(KEY_TYPE key,
-                  VALUE_TYPE * item,
-                  int part_id = -1, int thd_id = 0) = 0;
+    virtual RC index_insert(KEY_TYPE key, VALUE_TYPE item, int part_id = -1) = 0;
+    virtual RC index_read(KEY_TYPE key, VALUE_TYPE * item,
+	                      int part_id = -1, int thd_id = 0) = 0;
     virtual RC index_read(KEY_TYPE key, VALUE_TYPE * item, int part_id = -1) {
         return index_read(key, item, part_id, 0);
-    }
-    virtual RC index_read(KEY_TYPE key, VALUE_TYPE * item) {
-        return index_read(key, item, -1, 0);
     }
     
     // TODO implement index_remove
@@ -95,6 +89,8 @@ public:
     virtual void print_stats(){}
     virtual size_t getNodeSize(){return 0;}
     virtual size_t getDescriptorSize(){return 0;}
+	virtual void print() {};
+	virtual bool validate() { return false; };
 private:
     inline void vwlock_acquire(volatile vwlock * lock) {
         assert(debug_init_is_done == 0xCAFEBABE);

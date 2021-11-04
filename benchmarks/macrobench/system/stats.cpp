@@ -6,7 +6,8 @@
 
 #define BILLION 1000000000UL
 
-void Stats_thd::init(uint64_t thd_id) {
+void Stats_thd::init(uint64_t thd_id)
+{
 	clear();
 	all_debug1 = (uint64_t *)
 		_mm_malloc(sizeof(uint64_t) * MAX_TXN_PER_PART, ALIGNMENT);
@@ -14,7 +15,8 @@ void Stats_thd::init(uint64_t thd_id) {
 		_mm_malloc(sizeof(uint64_t) * MAX_TXN_PER_PART, ALIGNMENT);
 }
 
-void Stats_thd::setbench_deinit() {
+void Stats_thd::setbench_deinit()
+{
 	if (all_debug1) {
 		free(all_debug1);
 		all_debug1 = NULL;
@@ -25,12 +27,12 @@ void Stats_thd::setbench_deinit() {
 	}
 }
 
-void Stats_thd::clear() {
+void Stats_thd::clear()
+{
 	txn_cnt = 0;
 	abort_cnt = 0;
 	run_time = 0;
-	for (int i=0;i<MAX_NUM_INDEXES;++i)
-		stats_indexes[i].clear();
+	for (int i=0; i < MAX_NUM_INDEXES; ++i) stats_indexes[i].clear();
 	time_man = 0;
 	debug1 = 0;
 	debug2 = 0;
@@ -46,7 +48,8 @@ void Stats_thd::clear() {
 	time_query = 0;
 }
 
-void Stats_tmp_index::clear() {
+void Stats_tmp_index::clear()
+{
 	timeContains = 0;
 	timeInsert = 0;
 	timeRangeQuery = 0;
@@ -55,19 +58,21 @@ void Stats_tmp_index::clear() {
 	numRangeQuery = 0;
 }
 
-void Stats_tmp::init() {
+void Stats_tmp::init()
+{
 	clear();
 }
 
-void Stats_tmp::clear() {	
+void Stats_tmp::clear()
+{
 	time_man = 0;
 	time_index = 0;
 	time_wait = 0;
-	for (int i=0;i<MAX_NUM_INDEXES;++i)
-		stats_indexes[i].clear();
+	for (int i=0; i < MAX_NUM_INDEXES; ++i) stats_indexes[i].clear();
 }
 
-void Stats::init() {
+void Stats::init()
+{
 	if (!STATS_ENABLE) return;
 
 	_stats = (Stats_thd**)_mm_malloc(sizeof(Stats_thd*) * g_thread_cnt, ALIGNMENT);
@@ -78,7 +83,8 @@ void Stats::init() {
 	cycle_detect = 0;
 }
 
-void Stats::init(uint64_t thread_id) {
+void Stats::init(uint64_t thread_id)
+{
 	if (!STATS_ENABLE) return;
 
 	_stats[thread_id] = (Stats_thd *)_mm_malloc(sizeof(Stats_thd), ALIGNMENT);
@@ -88,7 +94,8 @@ void Stats::init(uint64_t thread_id) {
 	tmp_stats[thread_id]->init();
 }
 
-void Stats::setbench_deinit(uint64_t thread_id) {
+void Stats::setbench_deinit(uint64_t thread_id)
+{
 	if (!STATS_ENABLE) return;
 	if (_stats[thread_id]) {
 		_stats[thread_id]->setbench_deinit();
@@ -101,7 +108,8 @@ void Stats::setbench_deinit(uint64_t thread_id) {
 	}
 }
 
-void Stats::clear(uint64_t tid) {
+void Stats::clear(uint64_t tid)
+{
 	if (!STATS_ENABLE) return;
 
 	_stats[tid]->clear();
@@ -113,7 +121,8 @@ void Stats::clear(uint64_t tid) {
 	deadlock = 0;
 }
 
-void Stats::add_debug(uint64_t thd_id, uint64_t value, uint32_t select) {
+void Stats::add_debug(uint64_t thd_id, uint64_t value, uint32_t select)
+{
 	if (g_prt_lat_distr && warmup_finish) {
 		uint64_t tnum = _stats[thd_id]->txn_cnt;
 		if (select == 1)
@@ -123,12 +132,17 @@ void Stats::add_debug(uint64_t thd_id, uint64_t value, uint32_t select) {
 	}
 }
 
-void Stats::commit(uint64_t thd_id) {
+void Stats::commit(uint64_t thd_id)
+{
 	if (STATS_ENABLE) {
 		_stats[thd_id]->time_man += tmp_stats[thd_id]->time_man;
 		_stats[thd_id]->time_index += tmp_stats[thd_id]->time_index;
 		_stats[thd_id]->time_wait += tmp_stats[thd_id]->time_wait;
-#		define COMMIT_ACCUMULATE(name) for (int i=0;i<MAX_NUM_INDEXES;++i) _stats[thd_id]->stats_indexes[i].name += tmp_stats[thd_id]->stats_indexes[i].name
+
+		#define COMMIT_ACCUMULATE(name) \
+		   for (int i=0;i<MAX_NUM_INDEXES;++i) \
+		     _stats[thd_id]->stats_indexes[i].name += \
+		             tmp_stats[thd_id]->stats_indexes[i].name
 		COMMIT_ACCUMULATE(timeContains);
 		COMMIT_ACCUMULATE(timeInsert);
 		COMMIT_ACCUMULATE(timeRangeQuery);
@@ -139,11 +153,13 @@ void Stats::commit(uint64_t thd_id) {
 	}
 }
 
-void Stats::abort(uint64_t thd_id) {	
+void Stats::abort(uint64_t thd_id)
+{
 	if (STATS_ENABLE) tmp_stats[thd_id]->init();
 }
 
-void Stats::print(workload * wl) {
+void Stats::print(workload * wl)
+{
 	uint64_t total_txn_cnt = 0;
 	uint64_t total_abort_cnt = 0;
 	double total_run_time = 0;
@@ -179,53 +195,17 @@ void Stats::print(workload * wl) {
 		total_time_query += _stats[tid]->time_query;
 		
 		printf("[tid=%ld] txn_cnt=%ld,abort_cnt=%ld\n", 
-		       tid, _stats[tid]->txn_cnt, _stats[tid]->abort_cnt
-		);
+		       tid, _stats[tid]->txn_cnt, _stats[tid]->abort_cnt);
 	}
-	FILE * outf;
-//	if (output_file != NULL) {
-//		outf = fopen(output_file, "w");
-//		fprintf(outf, "[summary] txn_cnt=%ld, abort_cnt=%ld"
-//			", run_time=%f, time_wait=%f, time_ts_alloc=%f"
-//			", time_man=%f, time_index=%f, time_abort=%f, time_cleanup=%f, latency=%f"
-//			", deadlock_cnt=%ld, cycle_detect=%ld, dl_detect_time=%f, dl_wait_time=%f"
-//			", time_query=%f, debug1=%f, debug2=%f, debug3=%f, debug4=%f, debug5=%f"
-//                        ", nthreads=%d, throughput=%f, optimal_throughput=%f\n",
-//			total_txn_cnt, 
-//			total_abort_cnt,
-//			total_run_time / BILLION,
-//			total_time_wait / BILLION,
-//			total_time_ts_alloc / BILLION,
-//			(total_time_man - total_time_wait) / BILLION,
-//			total_time_index / BILLION,
-//			total_time_abort / BILLION,
-//			total_time_cleanup / BILLION,
-//			total_latency / BILLION / total_txn_cnt,
-//			deadlock,
-//			cycle_detect,
-//			dl_detect_time / BILLION,
-//			dl_wait_time / BILLION,
-//			total_time_query / BILLION,
-//			total_debug1, // / BILLION,
-//			total_debug2, // / BILLION,
-//			total_debug3, // / BILLION,
-//			total_debug4, // / BILLION,
-//			total_debug5 / BILLION,
-//                        g_thread_cnt,
-//                        total_txn_cnt/(total_run_time / BILLION)*g_thread_cnt,
-//                        total_txn_cnt/((total_run_time - total_time_index)/ BILLION)*g_thread_cnt
-//		);
-//		fclose(outf);
-//	}
 	
-#	define LOAD_STAT(index, tid, name) auto name = _stats[(tid)]->stats_indexes[index->index_id].name
-#	define ACCUM_STAT(index, tid, name) name += _stats[(tid)]->stats_indexes[index->index_id].name
+	#define LOAD_STAT(index, tid, name) \
+	  auto name = _stats[(tid)]->stats_indexes[index->index_id].name
+	#define ACCUM_STAT(index, tid, name) \
+	  name += _stats[(tid)]->stats_indexes[index->index_id].name
 
-/**
-* Compute per-thread per-index stats
-*/
+	//> Compute per-thread per-index stats
 	for (auto it = wl->indexes.begin(); it != wl->indexes.end(); it++) {
-		Index * index = it->second;
+		Index *index = it->second;
 		for (int tid=0;tid<g_thread_cnt;++tid) {
 			LOAD_STAT(index, tid, numContains);
 			LOAD_STAT(index, tid, timeContains);
@@ -258,9 +238,7 @@ void Stats::print(workload * wl) {
 		}
 	}
 
-/**
-* Compute per-index stats
-*/
+	//> Compute per-index stats
 	for (auto it = wl->indexes.begin(); it != wl->indexes.end(); it++) {
 		Index * index = it->second;
 
@@ -302,9 +280,7 @@ void Stats::print(workload * wl) {
 		       , ixThroughput);
 	}
 
-	/**
-	* Compute aggregate index stats
-	*/
+	//> Compute aggregate index stats
 	uint64_t numContains = 0;
 	double timeContains = 0;
 	uint64_t numInsert = 0;
@@ -342,9 +318,7 @@ void Stats::print(workload * wl) {
 	       , ixTotalTime
 	       , ixThroughput);
 
-	/**
-	* Print summary
-	*/
+	//> Print summary
 	printf("[summary] txn_cnt=%ld, abort_cnt=%ld"
 	       ", run_time=%f, time_wait=%f, time_ts_alloc=%f"
 	       ", time_man=%f, time_index=%f, time_abort=%f, time_cleanup=%f, latency=%f"
@@ -392,12 +366,12 @@ void Stats::print(workload * wl) {
 
 	papi_print_counters( total_txn_cnt/(total_run_time / BILLION)*g_thread_cnt);
 
-	if (g_prt_lat_distr)
-		print_lat_distr();
+	if (g_prt_lat_distr) print_lat_distr();
 }
 
-void Stats::print_lat_distr() {
-	FILE * outf;
+void Stats::print_lat_distr()
+{
+	FILE *outf;
 	if (output_file != NULL) {
 		outf = fopen(output_file, "a");
 		for (UInt32 tid = 0; tid < g_thread_cnt; tid ++) {

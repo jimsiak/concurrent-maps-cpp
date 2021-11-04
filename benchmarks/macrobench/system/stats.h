@@ -25,7 +25,7 @@ public:
 	uint64_t txn_cnt;
 	uint64_t abort_cnt;
 	double run_time;
-        Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
+	Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
 	double time_man;        // unused
 	double time_index;      // unused
 	double time_wait;       // unused
@@ -51,7 +51,7 @@ public:
 	void init();
 	void clear();
 	char _pad2[CL_SIZE];
-        Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
+	Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
 	double time_man;    // unused
 	double time_index;  // unused
 	double time_wait;   // unused
@@ -61,10 +61,10 @@ public:
 class Stats {
 public:
 	// PER THREAD statistics
-	Stats_thd ** _stats;
+	Stats_thd **_stats;
 	// stats are first written to tmp_stats, if the txn successfully commits, 
 	// copy the values in tmp_stats to _stats
-	Stats_tmp ** tmp_stats;
+	Stats_tmp **tmp_stats;
 	
 	// GLOBAL statistics
 	double dl_detect_time;  // unused
@@ -79,6 +79,6 @@ public:
 	void add_debug(uint64_t thd_id, uint64_t value, uint32_t select);
 	void commit(uint64_t thd_id);
 	void abort(uint64_t thd_id);
-	void print(workload * wl);
+	void print(workload *wl);
 	void print_lat_distr();
 };

@@ -13,7 +13,8 @@
 #include "mem_alloc.h"
 #include "test.h"
 
-void thread_t::init(uint64_t thd_id, workload *workload) {
+void thread_t::init(uint64_t thd_id, workload *workload)
+{
 	_thd_id = thd_id;
 	_wl = workload;
 	srand48_r((_thd_id + 1) * get_sys_clock(), &buffer);
@@ -25,7 +26,8 @@ void thread_t::init(uint64_t thd_id, workload *workload) {
 	_abort_buffer_enable = (g_params["abort_buffer_enable"] == "true");
 }
 
-void thread_t::setbench_deinit() {
+void thread_t::setbench_deinit()
+{
     if (_abort_buffer) {
         free(_abort_buffer);
         _abort_buffer = NULL;
@@ -38,9 +40,9 @@ void thread_t::set_host_cid(uint64_t cid) { _host_cid = cid; }
 uint64_t thread_t::get_cur_cid() { return _cur_cid; }
 void thread_t::set_cur_cid(uint64_t cid) {_cur_cid = cid; }
 
-RC thread_t::run() {
-	if (warmup_finish)
-		mem_allocator.register_thread(_thd_id);
+RC thread_t::run()
+{
+	if (warmup_finish) mem_allocator.register_thread(_thd_id);
 	pthread_barrier_wait( &warmup_bar );
 
 //	set_affinity(get_thd_id());
@@ -112,37 +114,37 @@ RC thread_t::run() {
 			m_txn->set_ts(get_next_ts());
 
 		rc = RCOK;
-#if CC_ALG == HSTORE
+		#if CC_ALG == HSTORE
 		if (WORKLOAD == TEST) {
 			uint64_t part_to_access[1] = {0};
 			rc = part_lock_man.lock(m_txn, &part_to_access[0], 1);
 		} else
 			rc = part_lock_man.lock(m_txn, m_query->part_to_access, m_query->part_num);
-#elif CC_ALG == VLL
+		#elif CC_ALG == VLL
 		vll_man.vllMainLoop(m_txn, m_query);
-#elif CC_ALG == MVCC || CC_ALG == HEKATON
+		#elif CC_ALG == MVCC || CC_ALG == HEKATON
 		glob_manager->add_ts(get_thd_id(), m_txn->get_ts());
-#elif CC_ALG == OCC
+		#elif CC_ALG == OCC
 		// In the original OCC paper, start_ts only reads the current ts without advancing it.
 		// But we advance the global ts here to simplify the implementation. However, the final
 		// results should be the same.
 		m_txn->start_ts = get_next_ts();
-#endif
+		#endif
 
 		if (rc == RCOK) {
-#if CC_ALG != VLL
+			#if CC_ALG != VLL
 			if (WORKLOAD == TEST) rc = runTest(m_txn);
 			else                  rc = m_txn->run_txn(m_query);
-#endif
+			#endif
 
-#if CC_ALG == HSTORE
+			#if CC_ALG == HSTORE
 			if (WORKLOAD == TEST) {
 				uint64_t part_to_access[1] = {0};
 				part_lock_man.unlock(m_txn, &part_to_access[0], 1);
 			} else {
 				part_lock_man.unlock(m_txn, m_query->part_to_access, m_query->part_num);
 			}
-#endif
+			#endif
 		}
 
 		if (rc == Abort) {
@@ -209,8 +211,8 @@ RC thread_t::run() {
 	assert(false);
 }
 
-
-ts_t thread_t::get_next_ts() {
+ts_t thread_t::get_next_ts()
+{
 	if (g_ts_batch_alloc) {
 		if (_curr_ts % g_ts_batch_num == 0) {
 			_curr_ts = glob_manager->get_ts(get_thd_id());
@@ -230,19 +232,16 @@ RC thread_t::runTest(txn_man * txn)
 	RC rc = RCOK;
 	if (g_test_case == READ_WRITE) {
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 0);
-#if CC_ALG == OCC
+		#if CC_ALG == OCC
 		txn->start_ts = get_next_ts();
-#endif
+		#endif
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 1);
 		printf("READ_WRITE TEST PASSED\n");
 		return FINISH;
-	}
-	else if (g_test_case == CONFLICT) {
+	} else if (g_test_case == CONFLICT) {
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 0);
-		if (rc == RCOK)
-			return FINISH;
-		else
-			return rc;
+		if (rc == RCOK) return FINISH;
+		else            return rc;
 	}
 	assert(false);
 	return RCOK;
