@@ -1,11 +1,12 @@
-CC = g++
+#CC = g++
+CC = /various/common_tools/gcc-5.3.0/bin/g++
 
 CFLAGS = -std=c++14 -O3 -g
 CFLAGS += -DMAX_THREADS_POW2=256 -DCPU_FREQ_GHZ=2.1
 CFLAGS += $(xargs)
 CFLAGS += -Wno-format
 CFLAGS += -DNO_CLEANUP_AFTER_WORKLOAD
-CFLAGS += -mrtm
+CFLAGS += -mrtm -mcx16
 CFLAGS += -Wno-write-strings
 CFLAGS += -fno-omit-frame-pointer
 CFLAGS += -DALIGNED_ALLOCATIONS
@@ -32,4 +33,4 @@ x.macrobench.YCSB: $(CPPS)
 	$(CC) -o $@ $^ $(LDFLAGS) -DWORKLOAD=YCSB
 
 clean:
-	@rm -f x.macrobench.*
+	rm -f x.macrobench.*

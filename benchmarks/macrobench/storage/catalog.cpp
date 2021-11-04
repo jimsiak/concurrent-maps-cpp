@@ -1,19 +1,19 @@
+#include <cstring>
 #include "catalog.h"
 #include "global.h"
 #include "helper.h"
 
 void 
 Catalog::init(const char * table_name, int field_cnt) {
-    this->table_name = table_name;
-    this->field_cnt = 0;
-    this->_columns = new Column [field_cnt];
-    this->tuple_size = 0;
+	this->table_name = new char[80];
+	strcpy(this->table_name, table_name);
+	this->field_cnt = 0;
+	this->_columns = new Column [field_cnt];
+	this->tuple_size = 0;
 }
 
 void Catalog::setbench_deinit() {
-    if (_columns) {
-        delete[] _columns;
-    }
+	if (_columns) delete[] _columns;
 }
 
 void Catalog::add_col(char * col_name, uint64_t size, char * type) {

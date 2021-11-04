@@ -44,7 +44,7 @@ public:
 	void add_col(char * col_name, uint64_t size, char * type);
 
 	UInt32 			field_cnt;
- 	const char * 	table_name;
+	char *table_name;
 	
 	UInt32 			get_tuple_size() { return tuple_size; };
 	
