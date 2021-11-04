@@ -89,6 +89,7 @@ enum {
 	S_QUANTITY,
 	S_REMOTE_CNT
 };
+
 #else 
 
 enum {

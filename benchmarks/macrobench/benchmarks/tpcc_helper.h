@@ -28,4 +28,4 @@ uint64_t NURand(uint64_t A, uint64_t x, uint64_t y, uint64_t thd_id);
 uint64_t MakeAlphaString(int min, int max, char * str, uint64_t thd_id);
 uint64_t MakeNumberString(int min, int max, char* str, uint64_t thd_id);
 
-uint64_t wh_to_part(uint64_t wid); 
+uint64_t wh_to_part(uint64_t wid);

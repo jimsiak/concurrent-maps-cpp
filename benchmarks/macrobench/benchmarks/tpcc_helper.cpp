@@ -1,8 +1,9 @@
 #include "tpcc_helper.h"
 
-drand48_data ** tpcc_buffer;
+drand48_data **tpcc_buffer;
 
-#define ZERO_MSB_64B_MASK 0x0FFFFFFFFFFFFFFF /* claim 4 MSBs for indexes to use as reserved bits */
+/* claim 4 MSBs for indexes to use as reserved bits */
+#define ZERO_MSB_64B_MASK 0x0FFFFFFFFFFFFFFF
 
 #ifdef HASH_PRIMARY_KEYS
 static inline uint64_t hash_murmur3(uint64_t v) {

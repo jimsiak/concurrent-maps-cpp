@@ -21,9 +21,9 @@ RC tpcc_wl::init()
 	#else
 	path += "TPCC_full_schema.txt";
 	#endif
-	cout<<"reading schema file: "<<path<<std::endl;
+	cout << "reading schema file: " << path << std::endl;
 	init_schema(path.c_str());
-	cout<<"TPCC schema initialized"<<std::endl;
+	cout << "TPCC schema initialized\n";
 	next_tid = 0;
 	init_table();
 	next_tid = 0;
@@ -468,7 +468,7 @@ void tpcc_wl::init_permutation(uint64_t * perm_c_id, uint64_t size, uint64_t wid
 | GetPermutation
 +==================================================================*/
 
-void * tpcc_wl::threadInitWarehouse(void * This)
+void *tpcc_wl::threadInitWarehouse(void *This)
 {
 	tpcc_wl * wl = (tpcc_wl *) This;
 

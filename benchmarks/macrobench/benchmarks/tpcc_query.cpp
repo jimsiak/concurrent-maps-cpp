@@ -30,7 +30,7 @@ void tpcc_query::setbench_deinit()
 void tpcc_query::gen_payment(uint64_t thd_id)
 {
 	type = TPCC_PAYMENT;
-	if (FIRST_PART_LOCAL) w_id = thd_id%g_num_wh+1;
+	if (FIRST_PART_LOCAL) w_id = thd_id % g_num_wh + 1;
 	// WARNING: DEFINITELY NOT SAFE IF NTHREADS > NWAREHOUSES
 	else                  w_id = URand(1, g_num_wh, thd_id % g_num_wh); 
 	d_w_id = w_id;
