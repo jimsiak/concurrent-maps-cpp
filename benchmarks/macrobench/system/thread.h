@@ -45,4 +45,6 @@ private:
 	int _abort_buffer_size;
 	int _abort_buffer_empty_slots;
 	bool _abort_buffer_enable;
+
+	base_query *get_next_query();
 };

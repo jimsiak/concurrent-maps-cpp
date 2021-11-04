@@ -81,7 +81,7 @@ public:
 
 	size_t getNodeSize() { return 0; }
 	size_t getDescriptorSize() { return 0; }
-	void print_stats(){}
+	void print_stats(){ index->validate(); }
 
 	void print() { index->print(); }
 	bool validate() { index->validate(); }

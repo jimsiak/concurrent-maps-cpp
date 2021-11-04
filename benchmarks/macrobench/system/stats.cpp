@@ -44,7 +44,6 @@ void Stats_thd::clear()
 	time_cleanup = 0;
 	time_wait = 0;
 	time_ts_alloc = 0;
-	latency = 0;
 	time_query = 0;
 }
 
@@ -174,7 +173,6 @@ void Stats::print(workload * wl)
 	double total_time_cleanup = 0;
 	double total_time_wait = 0;
 	double total_time_ts_alloc = 0;
-	double total_latency = 0;
 	double total_time_query = 0;
 	for (uint64_t tid = 0; tid < g_thread_cnt; tid ++) {
 		total_txn_cnt += _stats[tid]->txn_cnt;
@@ -191,7 +189,6 @@ void Stats::print(workload * wl)
 		total_time_cleanup += _stats[tid]->time_cleanup;
 		total_time_wait += _stats[tid]->time_wait;
 		total_time_ts_alloc += _stats[tid]->time_ts_alloc;
-		total_latency += _stats[tid]->latency;
 		total_time_query += _stats[tid]->time_query;
 		
 		printf("[tid=%ld] txn_cnt=%ld,abort_cnt=%ld\n", 
@@ -321,7 +318,7 @@ void Stats::print(workload * wl)
 	//> Print summary
 	printf("[summary] txn_cnt=%ld, abort_cnt=%ld"
 	       ", run_time=%f, time_wait=%f, time_ts_alloc=%f"
-	       ", time_man=%f, time_index=%f, time_abort=%f, time_cleanup=%f, latency=%f"
+	       ", time_man=%f, time_index=%f, time_abort=%f, time_cleanup=%f"
 	       ", deadlock_cnt=%ld, cycle_detect=%ld, dl_detect_time=%f, dl_wait_time=%f"
 	       ", time_query=%f, debug1=%f, debug2=%f, debug3=%f, debug4=%f, debug5=%f"
 	       ", ixNumContains=%ld, ixTimeContains=%f, ixNumInsert=%ld, ixTimeInsert=%f"
@@ -339,7 +336,6 @@ void Stats::print(workload * wl)
 	       total_time_index / BILLION,
 	       total_time_abort / BILLION,
 	       total_time_cleanup / BILLION,
-	       total_latency / BILLION / total_txn_cnt,
 	       deadlock,
 	       cycle_detect,
 	       dl_detect_time / BILLION,

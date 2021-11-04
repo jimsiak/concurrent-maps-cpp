@@ -40,7 +40,6 @@ public:
 	uint64_t debug4;
 	uint64_t debug5;
 	
-	uint64_t latency;       // unused
 	uint64_t * all_debug1;
 	uint64_t * all_debug2;
 	char _pad[CL_SIZE];

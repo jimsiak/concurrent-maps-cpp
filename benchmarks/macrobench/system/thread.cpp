@@ -40,6 +40,48 @@ void thread_t::set_host_cid(uint64_t cid) { _host_cid = cid; }
 uint64_t thread_t::get_cur_cid() { return _cur_cid; }
 void thread_t::set_cur_cid(uint64_t cid) {_cur_cid = cid; }
 
+base_query * thread_t::get_next_query()
+{
+	RC rc = RCOK;
+	base_query *ret = NULL;
+
+	if (WORKLOAD != TEST) {
+		int trial = 0;
+		if (_abort_buffer_enable) {
+			ret = NULL;
+			while (trial < 2) {
+				ts_t curr_time = get_sys_clock();
+				ts_t min_ready_time = UINT64_MAX;
+				if (_abort_buffer_empty_slots < _abort_buffer_size) {
+					for (int i = 0; i < _abort_buffer_size; i++) {
+						if (_abort_buffer[i].query != NULL && curr_time > _abort_buffer[i].ready_time) {
+							ret = _abort_buffer[i].query;
+							_abort_buffer[i].query = NULL;
+							_abort_buffer_empty_slots ++;
+							break;
+						} else if (_abort_buffer_empty_slots == 0
+								  && _abort_buffer[i].ready_time < min_ready_time)
+							min_ready_time = _abort_buffer[i].ready_time;
+					}
+				}
+				if (ret == NULL && _abort_buffer_empty_slots == 0) {
+					assert(trial == 0);
+					M_ASSERT(min_ready_time >= curr_time, "min_ready_time=%ld, curr_time=%ld\n", min_ready_time, curr_time);
+					usleep(min_ready_time - curr_time);
+				} else if (ret == NULL) {
+					ret = query_queue->get_next_query( _thd_id );
+				}
+
+				if (ret != NULL) break;
+			}
+		} else if (rc == RCOK) {
+			ret = query_queue->get_next_query(_thd_id);
+		}
+	}
+
+	return ret;
+}
+
 RC thread_t::run()
 {
 	if (warmup_finish) mem_allocator.register_thread(_thd_id);
@@ -63,54 +105,15 @@ RC thread_t::run()
 
 	while (true) {
 		ts_t starttime = get_sys_clock();
-		if (WORKLOAD != TEST) {
-			int trial = 0;
-			if (_abort_buffer_enable) {
-				m_query = NULL;
-				while (trial < 2) {
-					ts_t curr_time = get_sys_clock();
-					ts_t min_ready_time = UINT64_MAX;
-					if (_abort_buffer_empty_slots < _abort_buffer_size) {
-						for (int i = 0; i < _abort_buffer_size; i++) {
-							if (_abort_buffer[i].query != NULL && curr_time > _abort_buffer[i].ready_time) {
-								m_query = _abort_buffer[i].query;
-								_abort_buffer[i].query = NULL;
-								_abort_buffer_empty_slots ++;
-								break;
-							} else if (_abort_buffer_empty_slots == 0
-									  && _abort_buffer[i].ready_time < min_ready_time)
-								min_ready_time = _abort_buffer[i].ready_time;
-						}
-					}
-					if (m_query == NULL && _abort_buffer_empty_slots == 0) {
-						assert(trial == 0);
-						M_ASSERT(min_ready_time >= curr_time, "min_ready_time=%ld, curr_time=%ld\n", min_ready_time, curr_time);
-						usleep(min_ready_time - curr_time);
-					}
-					else if (m_query == NULL) {
-						m_query = query_queue->get_next_query( _thd_id );
-					}
+		m_query = get_next_query();
+		INC_STATS(_thd_id, time_query, get_sys_clock() - starttime);
 
-					if (m_query != NULL)
-						break;
-				}
-			} else if (rc == RCOK) {
-					m_query = query_queue->get_next_query( _thd_id );
-			}
-		}
-
-//		INC_STATS(_thd_id, time_query, get_sys_clock() - starttime);
 		m_txn->abort_cnt = 0;
-//#if CC_ALG == VLL
-//		_wl->get_txn_man(m_txn, this);
-//#endif
 		m_txn->set_txn_id(get_thd_id() + thd_txn_id * g_thread_cnt);
 		thd_txn_id ++;
 
-		if ((CC_ALG == HSTORE && !HSTORE_LOCAL_TS)
-				|| CC_ALG == MVCC
-				|| CC_ALG == HEKATON
-				|| CC_ALG == TIMESTAMP)
+		if ((CC_ALG == HSTORE && !HSTORE_LOCAL_TS) || CC_ALG == MVCC
+				|| CC_ALG == HEKATON || CC_ALG == TIMESTAMP)
 			m_txn->set_ts(get_next_ts());
 
 		rc = RCOK;
@@ -118,8 +121,9 @@ RC thread_t::run()
 		if (WORKLOAD == TEST) {
 			uint64_t part_to_access[1] = {0};
 			rc = part_lock_man.lock(m_txn, &part_to_access[0], 1);
-		} else
+		} else {
 			rc = part_lock_man.lock(m_txn, m_query->part_to_access, m_query->part_num);
+		}
 		#elif CC_ALG == VLL
 		vll_man.vllMainLoop(m_txn, m_query);
 		#elif CC_ALG == MVCC || CC_ALG == HEKATON
@@ -172,8 +176,7 @@ RC thread_t::run()
 		ts_t endtime = get_sys_clock();
 		uint64_t timespan = endtime - starttime;
 		INC_STATS(get_thd_id(), run_time, timespan);
-//		INC_STATS(get_thd_id(), latency, timespan);
-//		//stats.add_lat(get_thd_id(), timespan);
+
 		if (rc == RCOK) {
 			INC_STATS(get_thd_id(), txn_cnt, 1);
 			stats.commit(get_thd_id());
