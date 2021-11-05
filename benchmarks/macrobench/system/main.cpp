@@ -214,7 +214,8 @@ void do_cleanup(workload *m_wl)
 	* CLEANUP DATA TO ENSURE WE HAVEN'T MISSED ANY LEAKS
 	* This was notably missing in DBx1000...
 	********************************************************************/
-	#if !defined NO_CLEANUP_AFTER_WORKLOAD
+//	#if !defined NO_CLEANUP_AFTER_WORKLOAD
+	#if 0
 	for (uint32_t i = 0; i < thd_cnt; i++) stats.setbench_deinit(i);
 
 	// free indexes
