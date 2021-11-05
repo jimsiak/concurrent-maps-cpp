@@ -13,8 +13,6 @@ RC workload::init()
 	return RCOK;
 }
 
-void workload::setbench_deinit() {}
-
 RC workload::init_schema(std::string schema_file)
 {
 	assert(sizeof(uint64_t) == 8);

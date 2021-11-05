@@ -42,25 +42,6 @@ void txn_man::init(thread_t *h_thd, workload *h_wl, uint64_t thd_id)
 	#endif
 }
 
-void txn_man::setbench_deinit()
-{
-	if (accesses) {
-		for (int i=0;i<num_accesses_alloc;++i) {
-			if (accesses[i]) {
-				if (accesses[i]->orig_data) {
-					accesses[i]->orig_data->setbench_deinit();
-					free(accesses[i]->orig_data);
-					accesses[i]->orig_data = NULL;
-				}
-				free(accesses[i]);
-				accesses[i] = NULL;
-			}
-		}
-		free(accesses);
-		accesses = NULL;
-	}
-}
-
 void txn_man::set_txn_id(txnid_t txn_id) { this->txn_id = txn_id; }
 txnid_t txn_man::get_txn_id() { return this->txn_id; }
 workload * txn_man::get_wl() { return h_wl; }
@@ -109,7 +90,6 @@ void txn_man::cleanup(RC rc)
 			#endif
 //			row->free_row();
 			if (row) {
-				row->setbench_deinit();
 				free(row);
 				row = NULL;
 			}

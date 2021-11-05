@@ -36,20 +36,6 @@ RC ycsb_wl::init()
 	return RCOK;
 }
 
-void ycsb_wl::setbench_deinit()
-{
-	workload::setbench_deinit();
-	for (auto name_tableptr_pair : tables) {
-		auto tableptr = name_tableptr_pair.second;
-		tableptr->setbench_deinit();
-		free(tableptr);
-	}
-	if (perm) {
-		free(perm);
-		perm = NULL;
-	}
-}
-
 RC ycsb_wl::init_schema(std::string schema_file)
 {
 	workload::init_schema(schema_file);

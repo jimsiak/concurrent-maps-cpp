@@ -39,7 +39,6 @@ public:
 
 	RC init(table_t * host_table, uint64_t part_id, uint64_t row_id = 0);
 	void init(int size);
-	void setbench_deinit();
 	RC switch_schema(table_t * host_table);
 	// not every row has a manager
 	void init_manager(row_t * row);

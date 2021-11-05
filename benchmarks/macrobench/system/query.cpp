@@ -36,15 +36,6 @@ void Query_queue::init(workload *h_wl)
 	printf("Query Queue Init Time %f\n", 1.0 * (end - begin) / 1000000000UL);
 }
 
-void Query_queue::setbench_deinit()
-{
-	if (all_queries) {
-		for (int i=0;i<g_thread_cnt;++i) deinit_per_thread(i);
-		delete[] all_queries;
-		all_queries = NULL;
-	}
-}
-
 void Query_queue::init_per_thread(int thread_id)
 {
 	all_queries[thread_id] = (Query_thd *)_mm_malloc(sizeof(Query_thd), ALIGNMENT);
@@ -54,7 +45,6 @@ void Query_queue::init_per_thread(int thread_id)
 void Query_queue::deinit_per_thread(int thread_id)
 {
 	if (all_queries[thread_id]) {
-		all_queries[thread_id]->setbench_deinit();
 		free(all_queries[thread_id]);
 		all_queries[thread_id] = NULL;
 	}
@@ -100,17 +90,6 @@ void Query_thd::init(workload *h_wl, int thread_id)
 		new(&queries[qid]) tpcc_query();
 		queries[qid].init(thread_id, h_wl);
 		#endif
-	}
-}
-
-void Query_thd::setbench_deinit()
-{
-	if (queries) {
-		uint64_t request_cnt = CALC_REQUEST_COUNT;
-		for (UInt32 qid=0; qid < request_cnt; ++qid)
-		queries[qid].setbench_deinit();
-		free(queries);
-		queries = NULL;
 	}
 }
 

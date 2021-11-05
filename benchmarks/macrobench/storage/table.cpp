@@ -10,14 +10,6 @@ void table_t::init(Catalog * schema) {
 	this->schema = schema;
 }
 
-void table_t::setbench_deinit() {
-    if (schema) {
-        schema->setbench_deinit();
-        free(schema);
-        schema = NULL;
-    }
-}
-
 RC table_t::get_new_row(row_t *& row) {
 	// this function is obsolete. 
 	assert(false);

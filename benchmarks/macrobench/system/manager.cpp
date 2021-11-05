@@ -3,45 +3,6 @@
 #include "txn.h"
 #include "pthread.h"
 
-void Manager::setbench_deinit() {
-//    printf("called destructor Manager::setbench_deinit()\n");
-    if (timestamp) {
-        free(timestamp);
-        timestamp = NULL;
-    }
-    if (_epoch) {
-        free((void *) _epoch);
-        _epoch = NULL;
-    }
-    if (_last_epoch_update_time) {
-        free((void *) _last_epoch_update_time);
-        _last_epoch_update_time = NULL;
-    }
-    if (all_ts) {
-        for (uint32_t i = 0; i < g_thread_cnt; i++)  {
-            if (all_ts[i]) {
-                free((void *) all_ts[i]);
-                all_ts[i] = NULL;
-            }
-        }
-        free((void *) all_ts);
-        all_ts = NULL;
-    }
-    if (_all_txns) {
-        for (int i=0;i<g_thread_cnt;++i) {
-            if (_all_txns[i]) {
-//                printf("  in destructor Manager::setbench_deinit() cleaned up _all_txns[%d]\n", i);
-                _all_txns[i]->setbench_deinit();
-                free(_all_txns[i]);
-                _all_txns[i] = NULL;
-            }
-        }
-//        printf("  in destructor Manager::setbench_deinit() cleaned up _all_txns\n");
-        delete[] _all_txns;
-        _all_txns = NULL;
-    }
-}
-
 void Manager::init() {
 	timestamp = (uint64_t *) _mm_malloc(sizeof(uint64_t), ALIGNMENT);
 	*timestamp = 1;

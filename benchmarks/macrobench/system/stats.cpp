@@ -15,18 +15,6 @@ void Stats_thd::init(uint64_t thd_id)
 		_mm_malloc(sizeof(uint64_t) * MAX_TXN_PER_PART, ALIGNMENT);
 }
 
-void Stats_thd::setbench_deinit()
-{
-	if (all_debug1) {
-		free(all_debug1);
-		all_debug1 = NULL;
-	}
-	if (all_debug2) {
-		free(all_debug2);
-		all_debug2 = NULL;
-	}
-}
-
 void Stats_thd::clear()
 {
 	txn_cnt = 0;
@@ -91,20 +79,6 @@ void Stats::init(uint64_t thread_id)
 
 	_stats[thread_id]->init(thread_id);
 	tmp_stats[thread_id]->init();
-}
-
-void Stats::setbench_deinit(uint64_t thread_id)
-{
-	if (!STATS_ENABLE) return;
-	if (_stats[thread_id]) {
-		_stats[thread_id]->setbench_deinit();
-		free(_stats[thread_id]);
-		_stats[thread_id] = NULL;
-	}
-	if (tmp_stats[thread_id]) {
-		free(tmp_stats[thread_id]);
-		tmp_stats[thread_id] = NULL;
-	}
 }
 
 void Stats::clear(uint64_t tid)

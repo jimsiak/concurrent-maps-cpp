@@ -16,7 +16,6 @@ struct Item_no {
 class tpcc_query : public base_query {
 public:
 	void init(uint64_t thd_id, workload * h_wl);
-	void setbench_deinit();
 	TPCCTxnType type;
 	/**********************************************/
 	// common txn input for both payment & new-order

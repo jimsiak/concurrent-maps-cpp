@@ -11,7 +11,6 @@ class table_t
 {
 public:
 	void init(Catalog * schema);
-	void setbench_deinit();
 	// row lookup should be done with index. But index does not have
 	// records for new rows. get_new_row returns the pointer to a 
 	// new row.	

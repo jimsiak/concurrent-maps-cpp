@@ -37,7 +37,6 @@ public:
 class txn_man {
 public:
 	virtual void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
-	virtual void setbench_deinit();
 	void release();
 	thread_t * h_thd;
 	workload * h_wl;

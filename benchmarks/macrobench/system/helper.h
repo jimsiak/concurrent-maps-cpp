@@ -155,7 +155,6 @@ public:
 	bool operator==(const itemid_t &other) const;
 	bool operator!=(const itemid_t &other) const;
 	void operator=(const itemid_t &other);
-	void setbench_deinit();
 };
 
 int get_thdid_from_txnid(uint64_t txnid);

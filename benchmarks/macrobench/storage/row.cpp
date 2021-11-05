@@ -33,18 +33,6 @@ row_t::init(int size)
     data = (char *) _mm_malloc(size, ALIGNMENT);
 }
 
-void row_t::setbench_deinit() {
-    if (manager) {
-        manager->setbench_deinit();
-        free(manager);
-        manager = NULL;
-    }
-    if (data) {
-        free(data);
-        data = NULL;
-    }
-}
-
 RC 
 row_t::switch_schema(table_t * host_table) {
 	this->table = host_table;
@@ -288,7 +276,6 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
             this->copy(row);
 
 //            if (row) {
-//                row->setbench_deinit();
 //                free(row);
 //                row = NULL;
 //            }

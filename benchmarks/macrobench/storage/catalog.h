@@ -40,7 +40,6 @@ public:
 	// abandoned init function
 	// field_size is the size of each each field.
 	void init(const char * table_name, int field_cnt);
-	void setbench_deinit();
 	void add_col(char * col_name, uint64_t size, char * type);
 
 	UInt32 			field_cnt;

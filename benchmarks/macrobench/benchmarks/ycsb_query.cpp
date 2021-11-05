@@ -21,18 +21,6 @@ void ycsb_query::init(uint64_t thd_id, workload * h_wl, Query_thd * query_thd)
 	gen_requests(thd_id, h_wl);
 }
 
-void ycsb_query::setbench_deinit()
-{
-	if (requests) {
-		free(requests);
-		requests = NULL;
-	}
-	if (part_to_access) {
-		free(part_to_access);
-		part_to_access = NULL;
-	}
-}
-
 void ycsb_query::calculateDenom()
 {
 	assert(the_n == 0);

@@ -20,13 +20,6 @@ void Row_lock::init(row_t * row) {
 
 }
 
-void Row_lock::setbench_deinit() {
-    if (latch) {
-        delete latch;
-        latch = NULL;
-    }
-}
-
 RC Row_lock::lock_get(lock_t type, txn_man * txn) {
 	uint64_t *txnids = NULL;
 	int txncnt = 0;

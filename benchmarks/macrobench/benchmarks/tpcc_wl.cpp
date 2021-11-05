@@ -47,26 +47,6 @@ RC tpcc_wl::init()
 	return RCOK;
 }
 
-void tpcc_wl::setbench_deinit()
-{
-	workload::setbench_deinit();
-	for (auto name_tableptr_pair : tables) {
-		auto tableptr = name_tableptr_pair.second;
-		tableptr->setbench_deinit();
-		free(tableptr);
-	}
-	if (tpcc_buffer) {
-		for (int i=0;i<g_thread_cnt;++i) {
-			if (tpcc_buffer[i]) {
-				free(tpcc_buffer[i]);
-				tpcc_buffer[i] = NULL;
-			}
-		}
-		delete[] tpcc_buffer;
-		tpcc_buffer = NULL;
-	}
-}
-
 RC tpcc_wl::init_schema(const char * schema_file)
 {
 	workload::init_schema(schema_file);
@@ -376,7 +356,6 @@ void tpcc_wl::init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id)
 	row->set_value(H_DATA, h_data);
 	#endif
 	// just free the row right away, because it isn't even used in the original dbx implementation...
-	row->setbench_deinit();
 	free(row);
 }
 

@@ -10,7 +10,6 @@ class ycsb_query;
 class ycsb_wl : public workload {
 public:
 	RC init();
-	void setbench_deinit();
 	RC init_table();
 	RC init_schema(std::string schema_file);
 	RC get_txn_man(txn_man *& txn_manager, thread_t * h_thd);

@@ -257,7 +257,6 @@ RC tpcc_txn_man::run_payment(tpcc_query * query)
 	/////// we simply FREE the row (since it will never be touched by any thread, and we want to avoid leaks, and capture memory reclamation costs)
 	// we comment out insert_row because all it does is ensure the row gets freed if we ABORT... we free it now.
 //	insert_row(r_hist, _wl->t_history);
-	r_hist->setbench_deinit();
 	free(r_hist);
 
 	assert(rc==RCOK);
@@ -356,7 +355,6 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query)
 	// we comment out insert_row because all it does is ensure the row gets freed if we ABORT... we free it now.
 //	insert_row(r_no, _wl->t_neworder); 
 	if (r_no) {
-		r_no->setbench_deinit();
 		free(r_no);
 		r_no = NULL;
 	}

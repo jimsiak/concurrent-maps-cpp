@@ -216,7 +216,6 @@ void do_cleanup(workload *m_wl)
 	********************************************************************/
 //	#if !defined NO_CLEANUP_AFTER_WORKLOAD
 	#if 0
-	for (uint32_t i = 0; i < thd_cnt; i++) stats.setbench_deinit(i);
 
 	// free indexes
 	for (map<string,Index*>::iterator it = m_wl->indexes.begin(); it!=m_wl->indexes.end(); it++) {
@@ -226,33 +225,26 @@ void do_cleanup(workload *m_wl)
 	}
 
 	if (glob_manager) {
-		glob_manager->setbench_deinit();
 		free(glob_manager);
 		glob_manager = NULL;
 
 	}
 	if (m_thds) {
-		for (uint32_t i = 0; i < thd_cnt; i++) {
-			m_thds[i]->setbench_deinit();
-			free(m_thds[i]);
-		}
+		for (uint32_t i = 0; i < thd_cnt; i++) free(m_thds[i]);
 		delete[] m_thds;
 	}
 
 	if (WORKLOAD != TEST) {
 		if (query_queue) {
-			query_queue->setbench_deinit();
 			free(query_queue);
 			query_queue = NULL;
 		}
 	}
 
 	if (m_wl) {
-		m_wl->setbench_deinit();
 		delete m_wl;
 		m_wl = NULL;
 	}
 
-	thread_pinning::setbench_deinit(g_thread_cnt);
 	#endif
 }

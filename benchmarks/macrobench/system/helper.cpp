@@ -4,20 +4,6 @@
 #include "time.h"
 #include "row.h"
 
-void itemid_t::setbench_deinit() {
-    // ignore item->location if it points to a non-row...
-    if (type == DT_row) {
-        auto r = (row_t *) location;
-        if (r) {
-            r->setbench_deinit();
-            free(r);
-            r = NULL;
-        }
-    }
-    
-    // ignore item->next
-}
-
 bool itemid_t::operator==(const itemid_t &other) const {
 	return (type == other.type && location == other.location);
 }

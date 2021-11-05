@@ -12,10 +12,6 @@ Catalog::init(const char * table_name, int field_cnt) {
 	this->tuple_size = 0;
 }
 
-void Catalog::setbench_deinit() {
-	if (_columns) delete[] _columns;
-}
-
 void Catalog::add_col(char * col_name, uint64_t size, char * type) {
 	_columns[field_cnt].size = size;
 	strcpy(_columns[field_cnt].type, type);

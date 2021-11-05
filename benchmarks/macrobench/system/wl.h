@@ -29,7 +29,6 @@ public:
 	
 	// initialize the tables and indexes.
 	virtual RC init();
-	virtual void setbench_deinit();
 	virtual RC init_schema(std::string schema_file);
 	virtual RC init_table()=0;
 	virtual RC get_txn_man(txn_man *& txn_manager, thread_t * h_thd)=0;

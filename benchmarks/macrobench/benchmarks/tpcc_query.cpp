@@ -15,18 +15,6 @@ void tpcc_query::init(uint64_t thd_id, workload *h_wl)
 	else                  gen_new_order(thd_id);
 }
 
-void tpcc_query::setbench_deinit()
-{
-	if (items) {
-		free(items);
-		items = NULL;
-	}
-	if (part_to_access) {
-		free(part_to_access);
-		part_to_access = NULL;
-	}
-}
-
 void tpcc_query::gen_payment(uint64_t thd_id)
 {
 	type = TPCC_PAYMENT;

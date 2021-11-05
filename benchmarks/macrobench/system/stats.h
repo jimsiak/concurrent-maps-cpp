@@ -18,7 +18,6 @@ public:
 class Stats_thd {
 public:
 	void init(uint64_t thd_id);
-	void setbench_deinit();
 	void clear();
 
 	char _pad2[CL_SIZE];
@@ -72,7 +71,6 @@ public:
 	uint64_t deadlock;	
 
 	void init();
-	void setbench_deinit(uint64_t thread_id);
 	void init(uint64_t thread_id);
 	void clear(uint64_t tid);
 	void add_debug(uint64_t thd_id, uint64_t value, uint32_t select);
