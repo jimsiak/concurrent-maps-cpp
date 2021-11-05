@@ -25,13 +25,13 @@ public:
 	uint64_t abort_cnt;
 	double run_time;
 	Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
-	double time_man;        // unused
-	double time_index;      // unused
-	double time_wait;       // unused
-	double time_abort;      // unused
+	double time_man;
+	double time_index;
+	double time_wait;
+	double time_abort;
 	double time_cleanup;    // unused
 	uint64_t time_ts_alloc; // unused
-	double time_query;      // unused
+	double time_query;
 	uint64_t wait_cnt;
 	uint64_t debug1;
 	uint64_t debug2;
@@ -50,9 +50,9 @@ public:
 	void clear();
 	char _pad2[CL_SIZE];
 	Stats_tmp_index stats_indexes[MAX_NUM_INDEXES];
-	double time_man;    // unused
-	double time_index;  // unused
-	double time_wait;   // unused
+	double time_man;
+	double time_index;
+	double time_wait;
 	char _pad[CL_SIZE];
 };
 

@@ -205,8 +205,8 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 			rc = Abort;
 			return_row(type, txn, NULL);
 		}
-//		endtime = get_sys_clock(); // TODO: expensive?????????????
-//		INC_TMP_STATS(thd_id, time_wait, endtime - starttime);
+		endtime = get_sys_clock(); // TODO: expensive?????????????
+		INC_TMP_STATS(thd_id, time_wait, endtime - starttime);
 		row = this;
 	}
 	return rc;
@@ -233,7 +233,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 		while (!txn->ts_ready)
 			PAUSE
 		uint64_t t2 = get_sys_clock();
-//		INC_TMP_STATS(thd_id, time_wait, t2 - t1);
+		INC_TMP_STATS(thd_id, time_wait, t2 - t1);
 		row = txn->cur_row;
 	}
 	if (rc != Abort) {

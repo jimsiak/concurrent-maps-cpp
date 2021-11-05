@@ -154,7 +154,7 @@ row_t *txn_man::get_row(row_t * row, access_t type)
 	if (type == WR) wr_cnt ++;
 
 	uint64_t timespan = get_sys_clock() - starttime;
-//	INC_TMP_STATS(get_thd_id(), time_man, timespan);
+	INC_TMP_STATS(get_thd_id(), time_man, timespan);
 	return accesses[row_cnt - 1]->data;
 }
 
@@ -176,8 +176,10 @@ int txn_man::index_range_query(Index *index, idx_key_t low, idx_key_t high,
 	uint64_t starttime = get_sys_clock();
 	int numResults = 0;
 	index->index_range_query(low, high, resultKeys, resultValues, &numResults, part_id);
+	uint64_t endtime = get_sys_clock();
+
 	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].numRangeQuery, 1);
-	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeRangeQuery, get_sys_clock() - starttime);
+	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeRangeQuery, endtime - starttime);
 	return numResults;
 }
 #endif
@@ -187,8 +189,11 @@ itemid_t *txn_man::index_read(Index * index, idx_key_t key, int part_id)
 	uint64_t starttime = get_sys_clock();
 	itemid_t * item = NULL;
 	index->index_read(key, &item, part_id, get_thd_id());
+	uint64_t endtime = get_sys_clock();
+
 	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].numContains, 1);
-	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeContains, get_sys_clock() - starttime);
+	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeContains, endtime - starttime);
+	INC_TMP_STATS(get_thd_id(), time_index, endtime - starttime);
 	return item;
 }
 
@@ -196,16 +201,22 @@ void txn_man::index_read(Index * index, idx_key_t key, int part_id, itemid_t ** 
 {
 	uint64_t starttime = get_sys_clock();
 	index->index_read(key, item, part_id, get_thd_id());
+	uint64_t endtime = get_sys_clock();
+
 	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].numContains, 1);
-	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeContains, get_sys_clock() - starttime);
+	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeContains, endtime - starttime);
+	INC_TMP_STATS(get_thd_id(), time_index, endtime - starttime);
 }
 
 void txn_man::index_insert(Index * index, uint64_t key, row_t * row, int64_t part_id)
 {
 	uint64_t starttime = get_sys_clock();
 	get_wl()->index_insert(index, key, row, part_id);
+	uint64_t endtime = get_sys_clock();
+
 	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].numInsert, 1);
-	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeInsert, get_sys_clock() - starttime);
+	INC_TMP_STATS(get_thd_id(), stats_indexes[index->index_id].timeInsert, endtime - starttime);
+	INC_TMP_STATS(get_thd_id(), time_index, endtime - starttime);
 }
 
 RC txn_man::finish(RC rc)
@@ -230,7 +241,7 @@ RC txn_man::finish(RC rc)
 	cleanup(rc);
 	#endif
 	uint64_t timespan = get_sys_clock() - starttime;
-//	INC_TMP_STATS(get_thd_id(), time_man,  timespan);
+	INC_TMP_STATS(get_thd_id(), time_man,  timespan);
 //	INC_STATS(get_thd_id(), time_cleanup,  timespan);
 	return rc;
 }

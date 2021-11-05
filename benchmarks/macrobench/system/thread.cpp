@@ -174,7 +174,7 @@ RC thread_t::run()
 			stats.commit(get_thd_id());
 			txn_cnt ++;
 		} else if (rc == Abort) {
-//			INC_STATS(get_thd_id(), time_abort, timespan);
+			INC_STATS(get_thd_id(), time_abort, timespan);
 			INC_STATS(get_thd_id(), abort_cnt, 1);
 			stats.commit(get_thd_id()); // we commit in both cases to collect stats for ALL index accesses, not just those in committed transactions
 //			stats.abort(get_thd_id());
