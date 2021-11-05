@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "global.h"
 #include "helper.h"
@@ -10,7 +10,7 @@ class table_t;
 class base_query;
 class Index;
 
-// each thread has a txn_man. 
+// each thread has a txn_man.
 // a txn_man corresponds to a single transaction.
 
 //For VLL
@@ -23,23 +23,21 @@ public:
 	row_t * 	data;
 	row_t * 	orig_data;
 	void cleanup();
-#if CC_ALG == TICTOC
+	#if CC_ALG == TICTOC
 	ts_t 		wts;
 	ts_t 		rts;
-#elif CC_ALG == SILO
+	#elif CC_ALG == SILO
 	ts_t 		tid;
 	ts_t 		epoch;
-#elif CC_ALG == HEKATON
+	#elif CC_ALG == HEKATON
 	void * 		history_entry;	
-#endif
-
+	#endif
 };
 
-class txn_man
-{
+class txn_man {
 public:
 	virtual void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
-        virtual void setbench_deinit();
+	virtual void setbench_deinit();
 	void release();
 	thread_t * h_thd;
 	workload * h_wl;
@@ -57,26 +55,26 @@ public:
 
 	pthread_mutex_t txn_lock;
 	row_t * volatile cur_row;
-#if CC_ALG == HEKATON
+	#if CC_ALG == HEKATON
 	void * volatile history_entry;
-#endif
+	#endif
 	// [DL_DETECT, NO_WAIT, WAIT_DIE]
 	bool volatile 	lock_ready;
 	bool volatile 	lock_abort; // forces another waiting txn to abort.
 	// [TIMESTAMP, MVCC]
-	bool volatile 	ts_ready; 
+	bool volatile 	ts_ready;
 	// [HSTORE]
 	int volatile 	ready_part;
 	RC 				finish(RC rc);
 	void 			cleanup(RC rc);
-#if CC_ALG == TICTOC
+	#if CC_ALG == TICTOC
 	ts_t 			get_max_wts() 	{ return _max_wts; }
 	void 			update_max_wts(ts_t max_wts);
 	ts_t 			last_wts;
 	ts_t 			last_rts;
-#elif CC_ALG == SILO
+	#elif CC_ALG == SILO
 	ts_t 			last_tid;
-#endif
+	#endif
 	
 	// For OCC
 	uint64_t 		start_ts;
@@ -89,10 +87,10 @@ public:
 
 	// For VLL
 	TxnType 		vll_txn_type;
-        int                     index_range_query(Index * index, idx_key_t low, idx_key_t high, idx_key_t * resultKeys, itemid_t ** resultValues, int part_id);
-        itemid_t *		index_read(Index * index, idx_key_t key, int part_id);
+	int                     index_range_query(Index * index, idx_key_t low, idx_key_t high, idx_key_t * resultKeys, itemid_t ** resultValues, int part_id);
+	itemid_t *		index_read(Index * index, idx_key_t key, int part_id);
 	void 			index_read(Index * index, idx_key_t key, int part_id, itemid_t ** item);
-        void                    index_insert(Index * index, uint64_t key, row_t * row, int64_t part_id);
+	void                    index_insert(Index * index, uint64_t key, row_t * row, int64_t part_id);
 	row_t * 		get_row(row_t * row, access_t type);
 protected:	
 	void 			insert_row(row_t * row, table_t * table);
@@ -104,19 +102,19 @@ private:
 	ts_t 			timestamp;
 
 	bool _write_copy_ptr;
-#if CC_ALG == TICTOC || CC_ALG == SILO
+	#if CC_ALG == TICTOC || CC_ALG == SILO
 	bool 			_pre_abort;
 	bool 			_validation_no_wait;
-#endif
-#if CC_ALG == TICTOC
+	#endif
+	#if CC_ALG == TICTOC
 	bool			_atomic_timestamp;
 	ts_t 			_max_wts;
 	// the following methods are defined in concurrency_control/tictoc.cpp
 	RC				validate_tictoc();
-#elif CC_ALG == SILO
+	#elif CC_ALG == SILO
 	ts_t 			_cur_tid;
 	RC				validate_silo();
-#elif CC_ALG == HEKATON
+	#elif CC_ALG == HEKATON
 	RC 				validate_hekaton(RC rc);
-#endif
+	#endif
 };

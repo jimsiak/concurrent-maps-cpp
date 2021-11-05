@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #define MAX_NUM_INDEXES 10
 
@@ -6,19 +6,19 @@ class workload;
 
 class Stats_tmp_index {
 public:
-    void clear();
-    double timeContains;
-    double timeInsert;
-    double timeRangeQuery;
-    uint64_t numContains;
-    uint64_t numInsert;
-    uint64_t numRangeQuery;
+	void clear();
+	double timeContains;
+	double timeInsert;
+	double timeRangeQuery;
+	uint64_t numContains;
+	uint64_t numInsert;
+	uint64_t numRangeQuery;
 };
 
 class Stats_thd {
 public:
 	void init(uint64_t thd_id);
-        void setbench_deinit();
+	void setbench_deinit();
 	void clear();
 
 	char _pad2[CL_SIZE];
@@ -61,7 +61,7 @@ class Stats {
 public:
 	// PER THREAD statistics
 	Stats_thd **_stats;
-	// stats are first written to tmp_stats, if the txn successfully commits, 
+	// stats are first written to tmp_stats, if the txn successfully commits,
 	// copy the values in tmp_stats to _stats
 	Stats_tmp **tmp_stats;
 	
@@ -72,7 +72,7 @@ public:
 	uint64_t deadlock;	
 
 	void init();
-        void setbench_deinit(uint64_t thread_id);
+	void setbench_deinit(uint64_t thread_id);
 	void init(uint64_t thread_id);
 	void clear(uint64_t tid);
 	void add_debug(uint64_t thd_id, uint64_t value, uint32_t select);

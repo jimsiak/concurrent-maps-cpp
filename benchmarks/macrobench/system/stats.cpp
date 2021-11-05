@@ -191,7 +191,7 @@ void Stats::print(workload * wl)
 		total_time_ts_alloc += _stats[tid]->time_ts_alloc;
 		total_time_query += _stats[tid]->time_query;
 		
-		printf("[tid=%ld] txn_cnt=%ld,abort_cnt=%ld\n", 
+		printf("[tid=%ld] txn_cnt=%ld,abort_cnt=%ld\n",
 		       tid, _stats[tid]->txn_cnt, _stats[tid]->abort_cnt);
 	}
 	
@@ -327,7 +327,7 @@ void Stats::print(workload * wl)
 	       ", nthreads=%d, throughput=%f"
 	       ", node_size=%zd, descriptor_size=%zd"
 	       "\n",
-	       total_txn_cnt, 
+	       total_txn_cnt,
 	       total_abort_cnt,
 	       total_run_time / BILLION,
 	       total_time_wait / BILLION,
@@ -345,7 +345,7 @@ void Stats::print(workload * wl)
 	       total_debug2, // / BILLION,
 	       total_debug3, // / BILLION,
 	       total_debug4, // / BILLION,
-	       total_debug5,  // / BILLION 
+	       total_debug5,  // / BILLION
 	       numContains,
 	       timeContains,
 	       numInsert,
@@ -372,13 +372,13 @@ void Stats::print_lat_distr()
 		outf = fopen(output_file, "a");
 		for (UInt32 tid = 0; tid < g_thread_cnt; tid ++) {
 			fprintf(outf, "[all_debug1 thd=%d] ", tid);
-			for (uint32_t tnum = 0; tnum < _stats[tid]->txn_cnt; tnum ++) 
+			for (uint32_t tnum = 0; tnum < _stats[tid]->txn_cnt; tnum ++)
 				fprintf(outf, "%ld,", _stats[tid]->all_debug1[tnum]);
 			fprintf(outf, "\n[all_debug2 thd=%d] ", tid);
-			for (uint32_t tnum = 0; tnum < _stats[tid]->txn_cnt; tnum ++) 
+			for (uint32_t tnum = 0; tnum < _stats[tid]->txn_cnt; tnum ++)
 				fprintf(outf, "%ld,", _stats[tid]->all_debug2[tnum]);
 			fprintf(outf, "\n");
 		}
 		fclose(outf);
-	} 
+	}
 }

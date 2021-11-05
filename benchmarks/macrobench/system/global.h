@@ -27,12 +27,7 @@ using namespace std;
 #include "config.h"
 #include "stats.h"
 #include "dl_detect.h"
-//#include "tree_malloc.h"
 #include "thread_pinning.h"
-
-//#include "rlu.h"
-//extern __thread rlu_thread_data_t * rlu_self;
-//extern rlu_thread_data_t * rlu_tdata;
 
 extern __thread int tid;
 
@@ -93,7 +88,6 @@ extern UInt32 g_ts_batch_num;
 
 extern map<string, string> g_params;
 
-//#include "urcu.h" // include after the definition of g_thread_cnt
 #include "../../../../trevor_brown_ppopp20_interpolation_trees/common/papi/papi_util.h"
 
 // YCSB
@@ -147,8 +141,7 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 
 
 #define MSG(str, args...) { \
-	printf("[%s : %d] " str, __FILE__, __LINE__, args); } \
-//	printf(args); }
+	printf("[%s : %d] " str, __FILE__, __LINE__, args); }
 
 /************************************************/
 // constants
