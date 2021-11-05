@@ -2,3 +2,4 @@ benchmarks/microbench/x.microbench
 benchmarks/examplebench/x.examplebench
 benchmarks/macrobench/x.macrobench*
 benchmarks/macrobench/OBJS/
+benchmarks/macrobench/scripts/outputs
