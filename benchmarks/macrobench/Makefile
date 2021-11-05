@@ -24,13 +24,25 @@ LDFLAGS = $(CFLAGS)
 LDFLAGS += -lpthread
 
 CPPS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)*.cpp))
+OBJDIR = OBJS
+OBJS_TPCC = $(foreach obj, $(CPPS:.cpp=.o), $(OBJDIR)/TPCC/$(obj))
+OBJS_YCSB = $(foreach obj, $(CPPS:.cpp=.o), $(OBJDIR)/YCSB/$(obj))
+dir_guard=@mkdir -p $(@D)
 
 all: x.macrobench.TPCC x.macrobench.YCSB
 
-x.macrobench.TPCC: $(CPPS)
+x.macrobench.TPCC: $(OBJS_TPCC)
 	$(CC) -o $@ $^ $(LDFLAGS) -DWORKLOAD=TPCC
-x.macrobench.YCSB: $(CPPS)
+x.macrobench.YCSB: $(OBJS_YCSB)
 	$(CC) -o $@ $^ $(LDFLAGS) -DWORKLOAD=YCSB
 
+$(OBJDIR)/TPCC/%.o: %.cpp
+	$(dir_guard)
+	$(CC) -c $(CFLAGS) -DWORKLOAD=TPCC -o $@ $<
+
+$(OBJDIR)/YCSB/%.o: %.cpp
+	$(dir_guard)
+	$(CC) -c $(CFLAGS) -DWORKLOAD=YCSB -o $@ $<
+
 clean:
-	rm -f x.macrobench.*
+	rm -rf $(OBJDIR) x.macrobench.*
