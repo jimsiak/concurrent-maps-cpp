@@ -152,8 +152,8 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	} else if (rc == Abort) {} 
 	else if (rc == WAIT) {
 		ASSERT(CC_ALG == WAIT_DIE || CC_ALG == DL_DETECT);
-#if CC_ALG == DL_DETECT	
 		uint64_t starttime = get_sys_clock();
+#if CC_ALG == DL_DETECT
 		bool dep_added = false;
 #endif
 		uint64_t endtime;

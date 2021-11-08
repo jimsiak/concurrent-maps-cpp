@@ -18,7 +18,6 @@
 #define ABTREE_MAX_HEIGHT 20
 
 typedef int key_t;
-#define ABTREE_MAX_KEY 999999999
 
 template <typename K, typename V>
 class abtree : public Map<K,V> {
@@ -675,7 +674,7 @@ private:
 		leaf_level_max = -1; leaf_level_min = 99999;
 		leaves_at_same_level = 1;
 
-		validate_rec(root, MIN_KEY, ABTREE_MAX_KEY, 0);
+		validate_rec(root, MIN_KEY, this->INF_KEY, 0);
 
 		check_bst = (bst_violations == 0);
 		check_abtree_properties = (null_children_violations == 0) &&

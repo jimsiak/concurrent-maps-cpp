@@ -403,16 +403,20 @@ private:
 			internal = (node_internal_t *)n;
 			if (internal->weight > max_priority)
 				heap_violations++;
-			if (internal->key < min || max < internal->key)
+			if (internal->key < min || max < internal->key) {
+				printf("internal->key: %llu min: %llu max: %llu\n", internal->key, min, max);
 				bst_violations++;
+			}
 			validate_rec(internal->left, min, internal->key, internal->weight, depth+1);
 			validate_rec(internal->right, internal->key, max, internal->weight, depth+1);
 		} else {
 			external_nodes++;
 			
 			external = (node_external_t *)n;
-			if (!external->validate(min, max))
+			if (!external->validate(min, max)) {
+				printf("SKATAAAA\n");
 				bst_violations++;
+			}
 			if (depth < min_depth) min_depth = depth;
 			if (depth > max_depth) max_depth = depth;
 			leaf_keys += external->nr_keys;
@@ -640,7 +644,7 @@ bool TREAP::validate(bool print)
 	min_depth = 100000;
 	max_depth = -1;
 
-	if (root) validate_rec(root, 0, 99999999, 9999999, 0);
+	if (root) validate_rec(root, 0, this->INF_KEY, 9999999, 0);
 
 	check_bst = (bst_violations == 0);
 	check_heap = (heap_violations == 0);

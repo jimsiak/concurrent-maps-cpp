@@ -98,8 +98,8 @@ public:
 		initThread(tid);
 
 		root = createNode(tid, 1);
-		root->minKey = INF_KEY;
-		root->maxKey = INF_KEY;
+		root->minKey = this->INF_KEY;
+		root->maxKey = this->INF_KEY;
 		*root->ptrAddr(0) = EMPTY_VAL_TO_CASWORD;
 	}
 
@@ -132,7 +132,6 @@ public:
 private:
 
 	//> FIXME this should not be here, but somewhere global
-	const K INF_KEY = 9999999;
 	const int NUM_PROCESSES = 88;
 
 	//> FIXME this should not be here, but somewhere global
@@ -400,7 +399,7 @@ private:
 		casword_t newWord = (casword_t)NULL;
 		
 		assert(IS_EMPTY_VAL(word) || !IS_VAL(word) || ix > 0);
-		K foundKey = INF_KEY;
+		K foundKey = this->INF_KEY;
 		foundVal = this->NO_VALUE;
 		if (IS_VAL(word)) {
 			if (!IS_EMPTY_VAL(word)) {
@@ -654,7 +653,7 @@ private:
 		shortest_path = 999999;
 		longest_path = -1;
 	
-		validate_rec(*root->ptrAddr(0), 0, INF_KEY, 0);
+		validate_rec(*root->ptrAddr(0), 0, this->INF_KEY, 0);
 	
 		check_bst = (bst_violations == 0);
 	
@@ -1116,8 +1115,8 @@ private:
 		node->initSize = keyCount;
 		node->minKey = node->key(0);
 		node->maxKey = node->key(node->degree-2);
-		assert(node->minKey != INF_KEY);
-		assert(node->maxKey != INF_KEY);
+		assert(node->minKey != this->INF_KEY);
+		assert(node->maxKey != this->INF_KEY);
 		assert(node->minKey <= node->maxKey);
 		return word;
 	}
