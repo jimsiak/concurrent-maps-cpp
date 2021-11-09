@@ -665,5 +665,3 @@ bool TREAP::validate(bool print)
 
 	return check_bst && check_heap;
 }
-
-

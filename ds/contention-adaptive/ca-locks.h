@@ -389,6 +389,26 @@ public:
 		}
 	}
 
+	const std::pair<V,bool> do_find(const int tid, const K& key, tdata_t *tdata)
+	{
+		std::pair<V,bool> ret;
+		base_node_t *bnode;
+		route_node_t *parent, *gparent;
+
+		while (1) {
+			bnode = get_base_node(&parent, &gparent, key);
+			bnode->lock();
+			if (!bnode->is_valid()) {
+				bnode->unlock();
+				continue;
+			}
+			ret = bnode->root->find(tid, key);
+			adapt_if_needed(bnode, parent, gparent, tdata);
+			bnode->unlock();
+			return ret;
+		}
+	}
+
 	/**
 	 * For a range query of [key1, key2] returns (locked) all the base nodes involved.
 	 * Returns the number of base nodes, or -1 if some of the base nodes was invalid.
@@ -519,11 +539,11 @@ public:
 		total_keys = base_keys = 0;
 		min_depth = 100000;
 		max_depth = -1;
-		min_seq_ds_size = 9999999;
+		min_seq_ds_size = 999999999;
 		max_seq_ds_size = -1;
 		invalid_seq_data_structures = 0;
 	
-		if (root) validate_rec(root, 0, 99999999999, 0);
+		if (root) validate_rec(root, 0, this->INF_KEY, 0);
 	
 		check_bst = (bst_violations == 0) && (invalid_seq_data_structures == 0);
 	
@@ -585,8 +605,8 @@ public:
 	}
 
 	void deinitThread(const int tid) {
-		tdata_t *tdata = tdata_array[tid];
-		tdata->print();
+//		tdata_t *tdata = tdata_array[tid];
+//		tdata->print();
 	}
 
 	const V insert(const int tid, const K& key, const V& val)
@@ -614,7 +634,8 @@ public:
 
 	const std::pair<V,bool> find(const int tid, const K& key)
 	{
-		return std::pair<V,bool>(NULL, false);
+		tdata_t *tdata = tdata_array[tid];
+		return do_find(tid, key, tdata);
 	}
 
 	int rangeQuery(const int tid, const K& low, const K& hi,
