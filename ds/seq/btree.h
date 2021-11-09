@@ -13,8 +13,6 @@
 #include "../map_if.h"
 #include "Log.h"
 
-#define BTREE_MAX_KEY 99999999999LLU
-
 template <typename K, typename V>
 class btree : public Map<K,V> {
 private:
@@ -533,7 +531,7 @@ private:
 		leaves_level = -1;
 		leaves_at_same_level = 1;
 	
-		validate_rec(root, MIN_KEY, BTREE_MAX_KEY, 0);
+		validate_rec(root, MIN_KEY, this->INF_KEY, 0);
 	
 		check_bst = (bst_violations == 0);
 		check_btree_properties = (null_children_violations == 0) &&
