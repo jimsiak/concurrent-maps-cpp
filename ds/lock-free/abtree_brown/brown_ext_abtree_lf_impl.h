@@ -46,7 +46,6 @@ template <typename K, typename V>
 class abtree_brown : public Map<K,V> {
 private:
 	struct Node;
-	const K anyKey = 99999999;
 
 public:
 	abtree_brown(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
@@ -61,13 +60,13 @@ public:
 		rootLeft->leaf = true;
 		rootLeft->weight = true;
 		rootLeft->size = 0;
-		rootLeft->searchKey = anyKey;
+		rootLeft->searchKey = this->INF_KEY;
 
 		root = allocateNode(0);
 		root->leaf = false;
 		root->weight = true;
 		root->size = 1;
-		root->searchKey = anyKey;
+		root->searchKey = this->INF_KEY;
 		root->ptrs[0] = rootLeft;
 	}
 
