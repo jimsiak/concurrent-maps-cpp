@@ -115,4 +115,5 @@ void parser(int argc, char * argv[])
 		}
 	}
 	g_init_parallelism = g_thread_cnt;
+	if (g_thread_cnt >= 22) g_init_parallelism = 8;
 }
