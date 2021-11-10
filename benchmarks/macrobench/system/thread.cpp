@@ -194,10 +194,6 @@ RC thread_t::run()
 
 		if (warmup_finish && txn_cnt >= MAX_TXN_PER_PART) {
 			assert(txn_cnt == MAX_TXN_PER_PART);
-			if( !ATOM_CAS(_wl->sim_done, false, true) )
-				assert( _wl->sim_done);
-		}
-		if (_wl->sim_done) {
 			papi_stop_counters(get_thd_id());
 			return FINISH;
 		}
