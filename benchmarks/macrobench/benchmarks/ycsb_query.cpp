@@ -61,18 +61,21 @@ uint64_t ycsb_query::zipf(uint64_t n, double theta)
 void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl)
 {
 	#if CC_ALG == HSTORE
-	assert(g_virtual_part_cnt==g_part_cnt);
+	assert(g_virtual_part_cnt == g_part_cnt);
 	#endif
+
 	int access_cnt = 0;
 	set<uint64_t> all_keys;
 	part_num = 0;
 	double r = 0;
 	int64_t rint64 = 0;
+
 	drand48_r(&_query_thd->buffer, &r);
 	lrand48_r(&_query_thd->buffer, &rint64);
-	if (r<g_perc_multi_part) {
-		for (UInt32 i = 0; i<g_part_per_txn; i++) {
-			if (i==0&&FIRST_PART_LOCAL)
+
+	if (r < g_perc_multi_part) {
+		for (UInt32 i = 0; i < g_part_per_txn; i++) {
+			if (i==0 && FIRST_PART_LOCAL)
 				part_to_access[part_num] = thd_id%g_virtual_part_cnt;
 			else
 				part_to_access[part_num] = rint64%g_virtual_part_cnt;
@@ -81,25 +84,22 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl)
 			for (j = 0; j<part_num; j++)
 				if (part_to_access[part_num]==part_to_access[j])
 					break;
-			if (j==part_num)
-				part_num++;
+			if (j == part_num) part_num++;
 		}
 	} else {
 		part_num = 1;
-		if (FIRST_PART_LOCAL)
-			part_to_access[0] = thd_id%g_part_cnt;
-		else
-			part_to_access[0] = rint64%g_part_cnt;
+		if (FIRST_PART_LOCAL) part_to_access[0] = thd_id%g_part_cnt;
+		else                  part_to_access[0] = rint64%g_part_cnt;
 	}
 
 	int rid = 0;
-	for (UInt32 tmp = 0; tmp<g_req_per_query; tmp++) {
+	for (UInt32 tmp = 0; tmp < g_req_per_query; tmp++) {
 		double r;
 		drand48_r(&_query_thd->buffer, &r);
 		ycsb_request * req = &requests[rid];
-		if (r<g_read_perc) {
+		if (r < g_read_perc) {
 			req->rtype = RD;
-		} else if (r>=g_read_perc&&r<=g_write_perc+g_read_perc) {
+		} else if (r >= g_read_perc && r <= g_write_perc + g_read_perc) {
 			req->rtype = WR;
 		} else {
 			req->rtype = SCAN;
@@ -119,8 +119,8 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl)
 		lrand48_r(&_query_thd->buffer, &rint64);
 		req->value = rint64%(1<<8);
 		// Make sure a single row is not accessed twice
-		if (req->rtype==RD||req->rtype==WR) {
-			if (all_keys.find(req->key)==all_keys.end()) {
+		if (req->rtype == RD || req->rtype == WR) {
+			if (all_keys.find(req->key) == all_keys.end()) {
 				all_keys.insert(req->key);
 				access_cnt++;
 			} else {
@@ -128,15 +128,14 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl)
 			}
 		} else {
 			bool conflict = false;
-			for (UInt32 i = 0; i<req->scan_len; i++) {
+			for (UInt32 i = 0; i < req->scan_len; i++) {
 				primary_key = (row_id+i)*g_part_cnt+part_id;
-				if (all_keys.find(primary_key)
-					!=all_keys.end())
+				if (all_keys.find(primary_key) != all_keys.end())
 					conflict = true;
 			}
 			if (conflict) continue;
 			else {
-				for (UInt32 i = 0; i<req->scan_len; i++)
+				for (UInt32 i = 0; i < req->scan_len; i++)
 					all_keys.insert((row_id+i)*g_part_cnt+part_id);
 				access_cnt += SCAN_LEN;
 			}
@@ -147,14 +146,17 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl)
 
 	// Sort the requests in key order.
 	if (g_key_order) {
-		for (int i = request_cnt-1; i>0; i--)
-			for (int j = 0; j<i; j++)
-				if (requests[j].key>requests[j+1].key) {
+		for (int i = request_cnt - 1; i > 0; i--) {
+			for (int j = 0; j < i; j++) {
+				if (requests[j].key > requests[j+1].key) {
 					ycsb_request tmp = requests[j];
 					requests[j] = requests[j+1];
 					requests[j+1] = tmp;
 				}
-		for (UInt32 i = 0; i<request_cnt-1; i++)
-			assert(requests[i].key<requests[i+1].key);
+			}
+		}
+
+		for (UInt32 i = 0; i < request_cnt-1; i++)
+			assert(requests[i].key < requests[i+1].key);
 	}
 }

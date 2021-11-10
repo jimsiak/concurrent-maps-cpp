@@ -12,28 +12,30 @@ public:
 	RC init();
 	RC init_table();
 	RC init_schema(std::string schema_file);
-	RC get_txn_man(txn_man *& txn_manager, thread_t * h_thd);
+	RC get_txn_man(txn_man *& txn_manager, thread_t *h_thd);
 	int key_to_part(uint64_t key);
-	Index * the_index;
-	table_t * the_table;
+	Index *the_index;
+	table_t *the_table;
+
 private:
 	void init_table_parallel();
-	void * init_table_slice();
+	void *init_table_slice();
 
-	static void * threadInitTable(void * This) {
+	static void *threadInitTable(void *This) {
 		((ycsb_wl *) This)->init_table_slice();
 		return NULL;
 	}
-	pthread_mutex_t insert_lock;
-	//  For parallel initialization
+
+	// For parallel initialization
 	static int next_tid;
-	uint64_t* perm;
+	uint64_t *perm;
 };
 
 class ycsb_txn_man : public txn_man {
 public:
 	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
 	RC run_txn(base_query * query);
+
 private:
 	uint64_t row_cnt;
 	ycsb_wl * _wl;
