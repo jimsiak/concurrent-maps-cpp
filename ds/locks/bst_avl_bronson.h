@@ -50,7 +50,7 @@ public:
 	bst_avl_bronson(const K _NO_KEY, const V _NO_VALUE, const int numProcesses)
 	  : Map<K,V>(_NO_KEY, _NO_VALUE)
 	{
-		root = new node_t(99999999, this->NO_VALUE, 0, 0, NULL);
+		root = new node_t(this->INF_KEY, this->NO_VALUE, 0, 0, NULL);
 	}
 
 	void initThread(const int tid) {};
