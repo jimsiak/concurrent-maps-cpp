@@ -107,7 +107,7 @@ All the above sequential data structures can be protected by any of the followin
 
 * Unbalanced Internal BST by Ellen et. al [[6]](#).
 * Unbalanced Internal BST by Howley et. al [[7]](#7).
-* Unbalanced External BST by Natarajan et. al [[#8]](#8).
+* Unbalanced External BST by Natarajan et. al [[8]](#8).
 * Unbalanced External BST with 3-path synchronization by Brown et. al [[9]](#9).
 * Relaxed-balance (a-b)-tree with 3-path synchronization by Brown et. al [[9]](#9).
 * Interpolation ST synchronized with Double-Compare-Single-Swap (DCSS) by Brown et. al [[10]](#10).
