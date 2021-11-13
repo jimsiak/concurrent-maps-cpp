@@ -89,9 +89,9 @@ private:
 	
 		urcu_read_lock();
 		traverse(key, &parent, &leaf);
+		const V retval = (leaf == NULL) ? this->NO_VALUE : leaf->value;
 		urcu_read_unlock();
-		if (leaf) return leaf->value;
-		else      return this->NO_VALUE;
+		return retval;
 	}
 
 	int validate(node_t *prev, node_t *curr, int direction)
