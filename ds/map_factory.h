@@ -18,6 +18,7 @@
 #include "locks/bst_avl_drachsler.h"
 #include "locks/bst_avl_cf.h"
 #include "locks/bst_unb_ext_hohlocks.h"
+#include "locks/citrus/bst-citrus.h"
 
 #include "lock-free/bst_unb_natarajan.h"
 #include "lock-free/bst_unb_ellen.h"
@@ -75,6 +76,8 @@ static Map<K,V> *createMap(std::string& type, std::string& sync_type)
 		map = new bst_avl_cf<K,V>(MAX_KEY, NULL, 88);
 	else if (type == "bst-unb-ext-hohlocks")
 		map = new bst_unb_ext_hohlocks<K,V>(MAX_KEY, NULL, 88);
+	else if (type == "bst-unb-citrus")
+		map = new bst_unb_citrus<K,V>(MAX_KEY, NULL, 88);
 	//> Lock-free
 	else if (type == "bst-unb-natarajan")
 		map = new bst_unb_natarajan<K,V>(MAX_KEY, NULL, 88);
