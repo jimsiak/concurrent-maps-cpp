@@ -97,25 +97,26 @@ All the above sequential data structures can be protected by any of the followin
 ### Lock-based
 
 * Unbalanced External BST with hand-over-hand locking.
-* Relaxed-balance Partially External AVL BST by Bronson et. al [[1]](#1).
-* Relaxed-balance Internal AVL BST by Drachsler et. al [[2]](#2).
-* Relaxed-balance Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[3]](#3).
-* Contention-adaptive Treap by Winblad et. al [[4]](#4).
+* Unbalanced Internal Citrus BST by Arbel et. al [[1]](#1)..
+* Relaxed-balance Partially External AVL BST by Bronson et. al [[2]](#2).
+* Relaxed-balance Internal AVL BST by Drachsler et. al [[3]](#3).
+* Relaxed-balance Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[4]](#4).
+* Contention-adaptive Treap by Winblad et. al [[5]](#5).
 
 ### Lock-free
 
-* Unbalanced Internal BST by Ellen et. al [[5]](#).
-* Unbalanced Internal BST by Howley et. al [[6]](#6).
-* Unbalanced External BST by Natarajan et. al [[#7]](#7).
-* Unbalanced External BST with 3-path synchronization by Brown et. al [[8]](#8).
-* Relaxed-balance (a-b)-tree with 3-path synchronization by Brown et. al [[8]](#8).
-* Interpolation ST synchronized with Double-Compare-Single-Swap (DCSS) by Brown et. al [[9]](#9).
-* OpenBW-tree by Wang et. al [[10]](#10).
+* Unbalanced Internal BST by Ellen et. al [[6]](#).
+* Unbalanced Internal BST by Howley et. al [[7]](#7).
+* Unbalanced External BST by Natarajan et. al [[#8]](#8).
+* Unbalanced External BST with 3-path synchronization by Brown et. al [[9]](#9).
+* Relaxed-balance (a-b)-tree with 3-path synchronization by Brown et. al [[9]](#9).
+* Interpolation ST synchronized with Double-Compare-Single-Swap (DCSS) by Brown et. al [[10]](#10).
+* OpenBW-tree by Wang et. al [[11]](#11).
 
 ### RCU and HTM based
 
-* External AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[11]](#11).
-* Internal AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[11]](#11)
+* External AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[12]](#12).
+* Internal AVL BST synchronized with Consistency-oblivious programming (COP) by Avni et. al [[12]](#12)
 * RCU with coarse-grained lock synchronization for updaters (RCU-SGL) for all the data structures for with an RCU-HTM version is provided.
 
 ### RCU-HTM based
@@ -133,45 +134,49 @@ All the above sequential data structures can be protected by any of the followin
 
 ## References
 <a id="1">[1]</a> 
+Arbel (2014). 
+Concurrent updates with RCU: search tree as an example
+
+<a id="2">[2]</a> 
 Bronson (2010). 
 A Practical Concurrent Binary Search Tree.
 
-<a id="2">[2]</a> 
+<a id="3">[3]</a> 
 Drachsler (2014). 
 Practical concurrent binary search trees via logical ordering.
 
-<a id="3">[3]</a> 
+<a id="4">[4]</a> 
 Crain (2013). 
 The Contention-Friendly Tree.
 
-<a id="4">[4]</a> 
+<a id="5">[5]</a> 
 Winblad (2018). 
 Lock-free Contention Adapting Search Trees
 
-<a id="5">[5]</a> 
+<a id="6">[6]</a> 
 Ellen (2010). 
 Non-blocking Binary Search Trees.
 
-<a id="6">[6]</a> 
+<a id="7">[7]</a> 
 Howley (2012). 
 A non-blocking internal binary search tree.
 
-<a id="7">[7]</a> 
+<a id="8">[8]</a> 
 Crain (2014). 
 Fast concurrent lock-free binary search trees.
 
-<a id="8">[8]</a> 
+<a id="9">[9]</a> 
 Brown (2017). 
 A Template for Implementing Fast Lock-free Trees Using HTM.
 
-<a id="9">[9]</a> 
+<a id="10">[10]</a> 
 Brown (2020). 
 Non-blocking interpolation search trees with doubly-logarithmic running time.
 
-<a id="10">[10]</a> 
+<a id="11">[11]</a> 
 Wang (2018).
 Building a Bw-Tree Takes More Than Just Buzz Words.
 
-<a id="11">[11]</a>
+<a id="12">[12]</a>
 Avni (2014).
 Improving HTM Scaling with Consistency-Oblivious Programming.
