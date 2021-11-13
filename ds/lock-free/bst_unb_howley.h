@@ -55,8 +55,7 @@ public:
 		root = new node_t(0, this->NO_VALUE);
 	}
 
-	void initThread(const int tid) {
-	};
+	void initThread(const int tid) {};
 	void deinitThread(const int tid) {};
 
 	bool                    contains(const int tid, const K& key);
@@ -246,12 +245,9 @@ private:
 			}
 		}
 		
-		if (result != FOUND && last_right_op != last_right->op)
-			goto RETRY_LABEL;
-	
-		if ((*curr)->op != *curr_op)
-			goto RETRY_LABEL;
-	
+		if (result != FOUND && last_right_op != last_right->op) goto RETRY_LABEL;
+		if ((*curr)->op != *curr_op) goto RETRY_LABEL;
+
 		return result;
 	}
 	
@@ -312,14 +308,14 @@ private:
 		operation_t *replace_op;
 		int res;
 	
-		//> Node has less than two children
 		if (ISNULL(curr->right) || ISNULL(curr->left)) {
+			//> Node has less than two children
 			if (CAS_PTR(&(curr->op), curr_op, FLAG(curr_op, STATE_OP_MARK)) == curr_op) {
 				help_marked(pred, pred_op, curr);
 				return 1;
 			}
-		//> Node has two children
 		} else {
+			//> Node has two children
 			res = search(k, &pred, &pred_op, &replace, &replace_op, curr);
 			if (res == ABORT || curr->op != curr_op)
 				return 0;
