@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+git_commit=$(git rev-parse HEAD)
 export LD_PRELOAD=/home/users/jimsiak/concurentDataBenchmarks/trevor_brown_ppopp20_interpolation_trees/lib/libjemalloc.so
 export LD_LIBRARY_PATH=/various/common_tools/gcc-5.3.0/lib64/
 export MT_CONF=`seq -s, 0 21`,`seq -s, 44 65`
@@ -8,7 +9,7 @@ export MT_CONF=`seq -s, 0 21`,`seq -s, 44 65`
 seqds=("treap" "abtree" "btree" "bst-unb-int" "bst-unb-ext" "bst-unb-pext" "bst-avl-int" "bst-avl-ext" "bst-avl-pext")
 synctypes=("cg-htm" "cg-rwlock" "cg-spinlock")
 
-lockds=("bst-avl-bronson" "bst-avl-drachsler" "bst-avl-cf" "bst-unb-ext-hohlocks")
+lockds=("bst-avl-bronson" "bst-avl-drachsler" "bst-avl-cf" "bst-unb-citrus" "bst-unb-ext-hohlocks")
 lockfreeds=("bst-unb-natarajan" "bst-unb-ellen" "bst-unb-howley" "ist-brown" "abtree-brown" "abtree-brown-3path" "abtree-brown-llxscx" "bst-brown-3path" "bst-brown-llxscx" "bwtree-wang")
 copds=("avl-int-cop" "avl-ext-cop")
 nosynctypes=("NONE")
@@ -28,8 +29,8 @@ workloads=(100_0_0 90_5_5 80_10_10 50_25_25 20_40_40 0_50_50)
 treesizes=(100_100 1000_1K 10000_10K 1000000_1M)
 threadnums=(1 2 4 8 16 22 44)
 
-OUTFILE=scripts/outputs/all-cstrkeys-noreclamation.out
-#OUTFILE=scripts/outputs/all-ullongkeys-noreclamation.out
+#OUTFILE=scripts/outputs/all-cstrkeys-noreclamation.out
+OUTFILE=scripts/outputs/all-ullongkeys-noreclamation.${git_commit}.out
 
 SEED1=$RANDOM
 SEED2=$RANDOM
