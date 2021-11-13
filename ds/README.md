@@ -97,7 +97,7 @@ All the above sequential data structures can be protected by any of the followin
 ### Lock-based
 
 * Unbalanced External BST with hand-over-hand locking.
-* Unbalanced Internal Citrus BST by Arbel et. al [[1]](#1)..
+* Unbalanced Internal Citrus BST by Arbel et. al [[1]](#1).
 * Relaxed-balance Partially External AVL BST by Bronson et. al [[2]](#2).
 * Relaxed-balance Internal AVL BST by Drachsler et. al [[3]](#3).
 * Relaxed-balance Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[4]](#4).
