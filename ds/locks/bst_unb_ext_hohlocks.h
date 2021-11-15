@@ -126,7 +126,7 @@ private:
 			if (leaf) UNLOCK(&leaf->lock);
 			if (parent) UNLOCK(&parent->lock);
 			if (gparent) UNLOCK(&gparent->lock);
-			if (!gparent || !parent) UNLOCK(&root->lock);
+			if (!gparent || !parent) UNLOCK(&root_lock);
 			return leaf->value;
 		}
 	
