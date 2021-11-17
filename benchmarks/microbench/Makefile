@@ -1,13 +1,6 @@
 #GPP = g++
 GPP = /various/common_tools/gcc-5.3.0/bin/g++
 
-#KEY_TYPE = MAP_KEY_TYPE_CSTR
-#KEY_TYPE = MAP_KEY_TYPE_CPPULLONG
-KEY_TYPE = MAP_KEY_TYPE_ULLONG
-#KEY_TYPE = MAP_KEY_TYPE_INT
-
-PARAMFLAGS = -D$(KEY_TYPE)
-
 OPT_LEVEL ?= -O3
 GDB_SYMBOLS ?= -g
 INCFLAG = -I../../lib
@@ -20,10 +13,14 @@ WARNINGS = -Wall -Wextra -Wno-write-strings -Wno-unused-parameter -Wno-unused-bu
 
 GPPFLAGS = $(WARNINGS) $(OPT_LEVEL) $(GDB_SYMBOLS) $(INCFLAG) $(STDFLAG) $(PTHREADFLAG) $(RTMFLAG) $(MCXFLAG)
 
-all: clean x.microbench
+.PHONY: all clean x.microbench.*
 
-x.microbench: bench.cpp
-	$(GPP) $(GPPFLAGS) $(PARAMFLAGS) $^ -o $@
+all: clean x.microbench.ullong x.microbench.cppullong8
+
+x.microbench.ullong: bench.cpp
+	$(GPP) $(GPPFLAGS) $^ -o $@ -DMAP_KEY_TYPE_ULLONG
+x.microbench.cppullong%: bench.cpp
+	$(GPP) $(GPPFLAGS) $^ -o $@ -DMAP_KEY_TYPE_CPPULLONG -DCPPULLONG_KEY_SZ=$*
 
 clean: 
-	rm -f x.microbench
+	rm -f x.microbench.*

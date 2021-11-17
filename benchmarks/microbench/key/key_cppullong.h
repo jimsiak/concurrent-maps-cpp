@@ -2,19 +2,25 @@
 
 #include <iostream>
 
+#ifndef CPPULLONG_KEY_SZ
+#define CPPULLONG_KEY_SZ 64
+#endif
+#define PAD_SZ (CPPULLONG_KEY_SZ - sizeof(unsigned long long))
+
 class key_ullong {
 public:
 	unsigned long long val;
+	char padding[PAD_SZ];
 
 	key_ullong() { this->val = 0; }
 	key_ullong(const unsigned long long v) { this->val = v; }
 
-	bool operator <(const key_ullong& k) const { return val < k.val; }
-	bool operator >(const key_ullong& k) const { return val > k.val; }
-	bool operator ==(const key_ullong& k) const { return val == k.val; }
-	bool operator <=(const key_ullong& k) const { return val <= k.val; }
-	bool operator >=(const key_ullong& k) const { return val >= k.val; }
-	bool operator !=(const key_ullong& k) const { return val != k.val; }
+	bool operator < (const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val < k.val; }
+	bool operator > (const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val > k.val; }
+	bool operator ==(const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val == k.val; }
+	bool operator <=(const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val <= k.val; }
+	bool operator >=(const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val >= k.val; }
+	bool operator !=(const key_ullong& k) const { volatile int sum = 0; for (volatile int i=0; i < PAD_SZ; i++) sum += (int)padding[i]; return val != k.val; }
 
 	//> postfix ++ operator
 	key_ullong operator++(int) {
