@@ -162,7 +162,7 @@ Howley (2012).
 A non-blocking internal binary search tree.
 
 <a id="8">[8]</a> 
-Crain (2014). 
+Natarajan (2014). 
 Fast concurrent lock-free binary search trees.
 
 <a id="9">[9]</a> 

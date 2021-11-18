@@ -1,5 +1,5 @@
 benchmarks/examplebench/x.examplebench
-benchmarks/microbench/x.microbench
+benchmarks/microbench/x.microbench.*
 benchmarks/microbench/scripts/outputs
 benchmarks/microbench/scripts/*.png
 benchmarks/macrobench/x.macrobench*
