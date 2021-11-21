@@ -139,24 +139,18 @@ private:
 	void lookup_verify(const K& key, node_t *leaf)
 	{
 		if (!leaf) {
-			if (!root)
-				return;
-			else
-				TX_ABORT(ABORT_VALIDATION_FAILURE);
+			if (!root) return;
+			else TX_ABORT(ABORT_VALIDATION_FAILURE);
 		}
 	
-		if (leaf->key == key)
-			return;
+		if (leaf->key == key) return;
 	
-		if (!leaf->live)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (!leaf->live) TX_ABORT(ABORT_VALIDATION_FAILURE);
 	
 		node_t *prev = leaf->prev;
 		node_t *succ = leaf->succ;
-		if (prev && key <= prev->key)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
-		if (succ && key >= succ->key)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (prev && key <= prev->key) TX_ABORT(ABORT_VALIDATION_FAILURE);
+		if (succ && key >= succ->key) TX_ABORT(ABORT_VALIDATION_FAILURE);
 	}
 	
 	void insert_verify(const K& key, node_t *leaf)
@@ -512,7 +506,7 @@ private:
 		if (!leaf) return this->NO_VALUE;
 	
 		//> Key not in the tree
-		if (leaf->key != key) return this->NO_VALUE;
+		if (leaf->key != key || !leaf->live) return this->NO_VALUE;
 	
 		const V del_val = leaf->value;
 

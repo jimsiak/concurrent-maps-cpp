@@ -116,10 +116,7 @@ public:
 			TX_ABORT(ABORT_VALIDATION_FAILURE);
 		if (stack_top >= 0 && root != node_stack[0])
 			TX_ABORT(ABORT_VALIDATION_FAILURE);
-		if (stack_top >= 0 && node_stack_indexes[stack_top] == 0 && node_stack[stack_top]->left != NULL)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
-		if (stack_top >= 0 && node_stack_indexes[stack_top] == 1 && node_stack[stack_top]->right != NULL)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
+
 		for (int i=0; i < stack_top; i++) {
 			n1 = node_stack[i];
 			int index = node_stack_indexes[i];
@@ -146,6 +143,11 @@ public:
 		node_t *new_node;
 		node_t *connection_point;
 		node_t *n = node_stack[stack_top];
+
+		if (stack_top >= 0 && key < node_stack[stack_top]->key)
+			ht_insert(tdata->ht, &node_stack[stack_top]->left, NULL);
+		else if (stack_top >= 0 && key > node_stack[stack_top]->key)
+			ht_insert(tdata->ht, &node_stack[stack_top]->right, NULL);
 
 		if (n->key == key && n->marked) {
 			new_node = node_new_copy(n);

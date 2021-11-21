@@ -75,6 +75,7 @@ private:
 		node_t *n = new node_t(src->key, src->value);
 		n->value = src->value;
 		n->height = src->height;
+		n->marked = src->marked;
 		n->left = src->left;
 		n->right = src->right;
 		return n;
@@ -498,20 +499,18 @@ public:
 			else            connection_point->right = tree_copy_root;
 		}
 	}
-	void validate_copy(void **stack, int *node_stack_indexes,
-	                   int stack_top)
+	void validate_copy(void **stack, int *node_stack_indexes, int stack_top)
 	{
 		node_t **node_stack = (node_t **)stack;
 		node_t *n1, *n2;
 
+		if (root != node_stack[0])
+			TX_ABORT(ABORT_VALIDATION_FAILURE);
 		if (stack_top < 0 && root != NULL)
 			TX_ABORT(ABORT_VALIDATION_FAILURE);
 		if (stack_top >= 0 && root != node_stack[0])
 			TX_ABORT(ABORT_VALIDATION_FAILURE);
-		if (stack_top >= 0 && node_stack_indexes[stack_top] == 0 && node_stack[stack_top]->left != NULL)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
-		if (stack_top >= 0 && node_stack_indexes[stack_top] == 1 && node_stack[stack_top]->right != NULL)
-			TX_ABORT(ABORT_VALIDATION_FAILURE);
+
 		for (int i=0; i < stack_top; i++) {
 			n1 = node_stack[i];
 			int index = node_stack_indexes[i];
@@ -557,6 +556,12 @@ public:
 			return ((stack_top-1) >= 0 ? node_stack[stack_top-1] : NULL);
 		}
 	
+
+		if (key < node_stack[stack_top]->key)
+			ht_insert(tdata->ht, &node_stack[stack_top]->left, NULL);
+		else if (key > node_stack[stack_top]->key)
+			ht_insert(tdata->ht, &node_stack[stack_top]->right, NULL);
+
 		//> Start the tree copying with the new node.
 		tree_copy_root = new node_t(key, value);
 		*connpoint_stack_index = stack_top;

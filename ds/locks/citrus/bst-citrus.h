@@ -108,11 +108,10 @@ private:
 	{
 		node_t *prev = root, *curr = prev->left;
 	    int direction = 0;
-		int ckey = curr->key;
 	
-		while (curr && ckey != key) {
+		while (curr && curr->key != key) {
 			prev = curr;
-			if (ckey > key) {
+			if (curr->key > key) {
 				curr = curr->left;
 				direction = 0;
 			} else {
@@ -120,7 +119,7 @@ private:
 				direction = 1;
 			}
 	
-			if (curr) ckey = curr->key;
+			if (curr) curr->key = curr->key;
 		}
 	
 		*prev_p = prev;
@@ -340,7 +339,7 @@ private:
 			return;
 		}
 	
-		printf("%llu\n", root->key);
+		std::cout << root->key << "\n";
 	
 		print_rec(root->left, level + 1);
 	}
