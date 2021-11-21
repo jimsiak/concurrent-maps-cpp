@@ -15,7 +15,7 @@ GPPFLAGS = $(WARNINGS) $(OPT_LEVEL) $(GDB_SYMBOLS) $(INCFLAG) $(STDFLAG) $(PTHRE
 
 .PHONY: all clean x.microbench.*
 
-all: clean x.microbench.ullong x.microbench.cppullong8
+all: clean x.microbench.ullong x.microbench.cppullong64
 
 x.microbench.ullong: bench.cpp
 	$(GPP) $(GPPFLAGS) $^ -o $@ -DMAP_KEY_TYPE_ULLONG

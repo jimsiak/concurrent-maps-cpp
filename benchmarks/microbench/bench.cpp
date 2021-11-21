@@ -157,6 +157,7 @@ int main(int argc, char **argv)
 	map = createMap<map_key_t, map_val_t>(map_type, sync_type);
 	log_info("Benchmark\n");
 	log_info("=======================\n");
+	log_info("  Key size: %u\n", sizeof(map_key_t));
 	log_info("  MAP implementation: %s\n", map->name());
 
 	//> Initialize the warmup thread.
