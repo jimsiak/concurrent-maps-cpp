@@ -1,7 +1,7 @@
 /**
  * An external (a-b) search tree with 3-path synchronization.
  * Paper:
- *    , Brown et. al, PPoPP 
+ *    , Brown et. al, PPoPP
  **/
 
 #pragma once
@@ -170,7 +170,7 @@ struct abtree_Node {
 
     K keys[DEGREE];
     void * volatile ptrs[DEGREE];
-    
+
     bool isLeaf() {
         return leaf;
     }
@@ -186,7 +186,7 @@ struct abtree_Node {
     int getChildIndex(const K& key) {
         int nkeys = getKeyCount();
         int retval = 0;
-        while (retval < nkeys && !(key < (const K&) keys[retval])) {
+        while (retval < nkeys && key >= keys[retval]) {
 //            TXN_ASSERT(keys[retval] >= 0 && keys[retval] < MAXKEY);
             ++retval;
         }
@@ -199,10 +199,48 @@ struct abtree_Node {
         int nkeys = getKeyCount();
         for (int i=0;i<nkeys;++i) {
 //            TXN_ASSERT(keys[i] >= 0 && keys[i] < MAXKEY);
-            if (!(key < (const K&) keys[i]) && !((const K&) keys[i] < key)) return i;
+            if (key == keys[i]) return i;
         }
         return nkeys;
     }
+	void print()
+	{
+		printf("abtree_node: [");
+
+		for (int i=0; i < getKeyCount(); i++)
+			printf(" %llu |", keys[i]);
+		printf("]");
+		printf("%s - %s\n", leaf ? " LEAF" : "", tag ? " TAGGED" : "");
+	}
+	/**
+	 * Inserts 'key' in the right position inside node 'this'.
+	 * 'this' must be a leaf.
+	 **/
+	void insert_key(const K& key, void *ptr)
+	{
+		assert(leaf);
+		int nkeys = getKeyCount();
+		int key_pos = 0;
+
+		while (key_pos < nkeys && keys[key_pos] < key) key_pos++;
+
+		for (int i=getKeyCount(); i > key_pos; i--) {
+			keys[i] = keys[i-1];
+			ptrs[i] = ptrs[i-1];
+		}
+		keys[key_pos] = key;
+		ptrs[key_pos] = ptr;
+		size++;
+	}
+	void delete_keyindex(int key_index)
+	{
+		assert(leaf);
+		for (int i=key_index+1; i < getKeyCount(); i++) {
+			keys[i-1] = keys[i];
+			ptrs[i-1] = ptrs[i];
+		}
+		size--;
+	}
 };
 
 
@@ -239,7 +277,7 @@ public:
 
         const int tid = 0;
         initThread(tid);
-        dummy = allocateSCXRecord(tid);                                                                                                                                                            
+        dummy = allocateSCXRecord(tid);
         dummy->state = abtree_SCXRecord<DEGREE,K>::STATE_COMMITTED;
 
         abtree_Node<DEGREE,K> *rootleft = allocateNode(tid);
@@ -285,7 +323,7 @@ public:
 	   		return "(a-b)-tree Brown (3-path)";
 	}
 
-	void print() { /* print_helper(); */ };
+	void print() { print_helper(); };
 //	unsigned long long size() { return size_rec(root) - 2; };
 
 private:
@@ -364,7 +402,7 @@ private:
 	{
 	    bool shouldRebalance = false;
 	    V result = this->NO_VALUE;
-	    
+
 	    // do insert
 	    wrapper_info<DEGREE,K> info;
 	    bool retval = false;
@@ -398,7 +436,7 @@ private:
 	{
 	    bool shouldRebalance = false;
 	    V result = this->NO_VALUE;
-	    
+
 	    // do insert
 	    wrapper_info<DEGREE,K> info;
 	    bool retval = false;
@@ -436,21 +474,16 @@ private:
 	    int lindex;
 	    int nkeysl;
 	    bool found;
-	    abtree_Node<DEGREE,K> * parent = new abtree_Node<DEGREE,K>();
-	    abtree_Node<DEGREE,K> * left = new abtree_Node<DEGREE,K>();
+	    abtree_Node<DEGREE,K> * parent;
+	    abtree_Node<DEGREE,K> * left;
 	    abtree_Node<DEGREE,K> * right;
 	    kvpair<K,V> tosort[DEGREE+1];
-	
-	    if (parent->marked) parent->marked = false;
-	    parent->scxRecord = dummy;
-	    if (left->marked) left->marked = false;
-	    left->scxRecord = dummy;
-	
+
 	    int attempts = MAX_FAST_HTM_RETRIES;
 	TXN1: (0);
 	    int status = _xbegin();
 	    if (status == _XBEGIN_STARTED) {
-	        if (numFallback > 0) 
+	        if (numFallback > 0)
 				_xabort(ABORT_PROCESS_ON_FALLBACK);
 	
 	        p = root;
@@ -464,7 +497,7 @@ private:
 	        keyindexl = l->getKeyIndex(key);
 	        lindex = p->getChildIndex(key);
 	        nkeysl = l->getKeyCount();
-	   
+
 	        found = (keyindexl < nkeysl);
 	        if (found) {
 	            if (!onlyIfAbsent) l->ptrs[keyindexl] = val;
@@ -475,10 +508,8 @@ private:
 	        } else {
 	            if (nkeysl < DEGREE) {
 	                // inserting new key/value pair into leaf
-	                l->keys[nkeysl] = key;
-	                l->ptrs[nkeysl] = val;
-	                ++l->size;
-	//                __sync_synchronize();
+					l->insert_key(key, val);
+
 	                *result = this->NO_VALUE;
 	                _xend();
 	                *shouldRebalance = false;
@@ -486,14 +517,23 @@ private:
 	            } else { // nkeysl == DEGREE
 	                // overflow: insert a new tagged parent above l and create a new sibling
 	                right = l;
-	
-	                for (int i=0;i<nkeysl;++i) {
+					parent = new abtree_Node<DEGREE,K>();
+					parent->scxRecord = dummy;
+					parent->marked = false;
+					left = new abtree_Node<DEGREE,K>();
+					left->scxRecord = dummy;
+					left->marked = false;
+
+					for (int i=0; i < keyindexl; i++) {
 	                    tosort[i].key = l->keys[i];
 	                    tosort[i].val = (V)l->ptrs[i];
-	                }
-	                tosort[nkeysl].key = key;
-	                tosort[nkeysl].val = val;
-	                qsort(tosort, nkeysl+1, sizeof(kvpair<K,V>), kv_compare<K,V>);
+					}
+					tosort[keyindexl].key = key;
+					tosort[keyindexl].val = val;
+					for (int i=keyindexl+1; i <= nkeysl; i++) {
+	                    tosort[i].key = l->keys[i-1];
+	                    tosort[i].val = (V)l->ptrs[i-1];
+					}
 	
 	                const int leftLength = (nkeysl+1)/2;
 	                for (int i=0;i<leftLength;++i) {
@@ -521,17 +561,17 @@ private:
 	                parent->tag = (p != root);
 	                parent->size = 2;
 	                parent->leaf = false;
-	                
+
 	                p->ptrs[lindex] = parent;
 	                *result = this->NO_VALUE;
 	                _xend();
-	                
+
 	                *shouldRebalance = true;
-	                
+
 	                // do memory reclamation and allocation
 	//                REPLACE_ALLOCATED_NODE(tid, 0);
 	//                REPLACE_ALLOCATED_NODE(tid, 1);
-	                
+
 	                return true;
 	            }
 	        }
@@ -618,12 +658,11 @@ private:
 	                for (int i=0;i<nkeysl;++i) {
 	                    newNode->ptrs[i] = l->ptrs[i];
 	                }
-	                newNode->keys[nkeysl] = key;
-	                newNode->ptrs[nkeysl] = val;
 	
 	                newNode->tag = false;
 	                newNode->leaf = true;
-	                newNode->size = nkeysl+1;
+	                newNode->size = nkeysl;
+					newNode->insert_key(key, val);
 	
 	                info->numberOfNodesAllocated = 1;
 	                info->numberOfNodesToFreeze = 2;
@@ -646,16 +685,21 @@ private:
 	                abtree_Node<DEGREE,K> * right = new abtree_Node<DEGREE,K>();
 	                right->marked = false;
 	                right->scxRecord = dummy;
-	
+
 	                kvpair<K,V> tosort[nkeysl+1];
-	                for (int i=0;i<nkeysl;++i) {
+
+					for (int i=0; i < keyindexl; i++) {
 	                    tosort[i].key = l->keys[i];
 	                    tosort[i].val = (V)l->ptrs[i];
-	                }
-	                tosort[nkeysl].key = key;
-	                tosort[nkeysl].val = val;
-	                qsort(tosort, nkeysl+1, sizeof(kvpair<K,V>), kv_compare<K,V>);
-	
+					}
+					tosort[keyindexl].key = key;
+					tosort[keyindexl].val = val;
+					for (int i=keyindexl+1; i <= nkeysl; i++) {
+	                    tosort[i].key = l->keys[i-1];
+	                    tosort[i].val = (V)l->ptrs[i-1];
+					}
+
+
 	                const int leftLength = (nkeysl+1)/2;
 	                for (int i=0;i<leftLength;++i) {
 	                    left->keys[i] = tosort[i].key;
@@ -716,20 +760,20 @@ private:
 	        p = l;
 	        l = l->getChild(key);
 	    }
-	    
+
 	    void * ptrsp[DEGREE];
-	    if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) llx(tid, p, ptrsp)) == NULL) 
+	    if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) llx(tid, p, ptrsp)) == NULL)
 			return false;
 	    int lindex = p->getChildIndex(key);
 	    if (p->ptrs[lindex] != l) return false;
 	    info->nodes[0] = p;
-	    
+
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) llx(tid, l, ptrsl)) == NULL)
 			return false;
 	    int keyindexl = l->getKeyIndex(key);
 	    info->nodes[1] = l;
-	    
+
 	    int nkeysl = l->getKeyCount();
 	    bool found = (keyindexl < nkeysl);
 	    if (found) {
@@ -754,13 +798,13 @@ private:
 	            newNode->tag = false;
 	            newNode->leaf = true;
 	            newNode->size = l->size;
-	            
+
 	            info->numberOfNodesAllocated = 1;
 	            info->numberOfNodesToFreeze = 2;
 	            info->numberOfNodes = 2;
 	            info->field = &p->ptrs[lindex];
 	            info->newNode = newNode;
-	            
+
 	            *result = (V)l->ptrs[keyindexl];
 	            *shouldRebalance = false;
 	        }
@@ -777,19 +821,18 @@ private:
 	            for (int i=0;i<nkeysl;++i) {
 	                newNode->ptrs[i] = l->ptrs[i];
 	            }
-	            newNode->keys[nkeysl] = key;
-	            newNode->ptrs[nkeysl] = val;
 	
 	            newNode->tag = false;
 	            newNode->leaf = true;
-	            newNode->size = nkeysl+1;
-	            
+	            newNode->size = nkeysl;
+				newNode->insert_key(key, val);
+
 	            info->numberOfNodesAllocated = 1;
 	            info->numberOfNodesToFreeze = 2;
 	            info->numberOfNodes = 2;
 	            info->field = &p->ptrs[lindex];
 	            info->newNode = newNode;
-	            
+
 	            *result = this->NO_VALUE;
 	            *shouldRebalance = false;
 	        } else { // nkeysl == DEGREE
@@ -807,14 +850,19 @@ private:
 	            right->scxRecord = dummy;
 	
 	            kvpair<K,V> tosort[nkeysl+1];
-	            for (int i=0;i<nkeysl;++i) {
-	                tosort[i].key = l->keys[i];
-	                tosort[i].val = (V)l->ptrs[i];
-	            }
-	            tosort[nkeysl].key = key;
-	            tosort[nkeysl].val = val;
-	            qsort(tosort, nkeysl+1, sizeof(kvpair<K,V>), kv_compare<K,V>);
-	            
+
+				for (int i=0; i < keyindexl; i++) {
+                    tosort[i].key = l->keys[i];
+                    tosort[i].val = (V)l->ptrs[i];
+				}
+				tosort[keyindexl].key = key;
+				tosort[keyindexl].val = val;
+				for (int i=keyindexl+1; i <= nkeysl; i++) {
+                    tosort[i].key = l->keys[i-1];
+                    tosort[i].val = (V)l->ptrs[i-1];
+				}
+	
+
 	            const int leftLength = (nkeysl+1)/2;
 	            for (int i=0;i<leftLength;++i) {
 	                left->keys[i] = tosort[i].key;
@@ -825,7 +873,7 @@ private:
 	            left->tag = false;
 	            left->size = leftLength;
 	            left->leaf = true;
-	            
+
 	            const int rightLength = (nkeysl+1) - leftLength;
 	            for (int i=0;i<rightLength;++i) {
 	                right->keys[i] = tosort[i+leftLength].key;
@@ -836,25 +884,25 @@ private:
 	            right->tag = false;
 	            right->size = rightLength;
 	            right->leaf = true;
-	            
+
 	            parent->keys[0] = right->keys[0];
 	            parent->ptrs[0] = left;
 	            parent->ptrs[1] = right;
 	            parent->tag = (p != root);
 	            parent->size = 2;
 	            parent->leaf = false;
-	            
+
 	            info->numberOfNodesAllocated = 3;
 	            info->numberOfNodesToFreeze = 2;
 	            info->numberOfNodes = 2;
 	            info->field = &p->ptrs[lindex];
 	            info->newNode = parent;
-	            
+
 	            *result = this->NO_VALUE;
 	            *shouldRebalance = true;
 	        }
 	    }
-	    
+
 	    bool retval = scx(tid, info);
 //	    reclaimMemoryAfterSCX(tid, info, false);
 		return retval;
@@ -869,21 +917,12 @@ private:
 	    int lindex;
 	    int nkeysl;
 	    bool found;
-	    abtree_Node<DEGREE,K> * parent = new abtree_Node<DEGREE,K>();
-	    abtree_Node<DEGREE,K> * left = new abtree_Node<DEGREE,K>();
-	    abtree_Node<DEGREE,K> * right;
-	    kvpair<K,V> tosort[DEGREE+1];
-	
-	    if (parent->marked) parent->marked = false;
-	    parent->scxRecord = dummy;
-	    if (left->marked) left->marked = false;
-	    left->scxRecord = dummy;
 	
 	    int attempts = MAX_FAST_HTM_RETRIES;
 	TXN1: (0);
 	    int status = _xbegin();
 	    if (status == _XBEGIN_STARTED) {
-	        if (numFallback > 0) 
+	        if (numFallback > 0)
 				_xabort(ABORT_PROCESS_ON_FALLBACK);
 	
 	        p = root;
@@ -897,14 +936,12 @@ private:
 	        keyindexl = l->getKeyIndex(key);
 	        lindex = p->getChildIndex(key);
 	        nkeysl = l->getKeyCount();
-	   
+
 	        found = (keyindexl < nkeysl);
 	        if (found) {
 				//> Delete
 	            val = (V)l->ptrs[keyindexl];
-	            l->keys[keyindexl] = l->keys[nkeysl-1];
-	            l->ptrs[keyindexl] = l->ptrs[nkeysl-1];
-	            --l->size;
+				l->delete_keyindex(keyindexl);
 	            *shouldRebalance = (nkeysl < MIN_DEGREE);
 	        } else {
 				val = this->NO_VALUE;
@@ -935,7 +972,7 @@ private:
 	        }
 	
 	        void * ptrsp[DEGREE];
-	        if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) llx_txn(tid, p, ptrsp)) == NULL) 
+	        if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) llx_txn(tid, p, ptrsp)) == NULL)
 				_xabort(ABORT_LLX_FAILED);
 	        int lindex = p->getChildIndex(key);
 	        if (p->ptrs[lindex] != l)
@@ -943,7 +980,7 @@ private:
 	        info->nodes[0] = p;
 	
 	        void * ptrsl[DEGREE];
-	        if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) llx_txn(tid, l, ptrsl)) == NULL) 
+	        if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) llx_txn(tid, l, ptrsl)) == NULL)
 				_xabort(ABORT_LLX_FAILED);
 	        int keyindexl = l->getKeyIndex(key);
 	        info->nodes[1] = l;
@@ -1008,21 +1045,21 @@ private:
 	        p = l;
 	        l = l->getChild(key);
 	    }
-	    
+
 	    void * ptrsp[DEGREE];
 	    if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) llx(tid, p, ptrsp)) == NULL)
 			return false;
 	    int lindex = p->getChildIndex(key);
-	    if (p->ptrs[lindex] != l) 
+	    if (p->ptrs[lindex] != l)
 			return false;
 	    info->nodes[0] = p;
-	    
+
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) llx(tid, l, ptrsl)) == NULL)
 			return false;
 	    int keyindexl = l->getKeyIndex(key);
 	    info->nodes[1] = l;
-	    
+
 	    int nkeysl = l->getKeyCount();
 	    bool found = (keyindexl < nkeysl);
 	    if (found) {
@@ -1032,7 +1069,7 @@ private:
 	        abtree_Node<DEGREE,K> * newNode = new abtree_Node<DEGREE,K>();
 	        newNode->scxRecord = dummy;
 	        newNode->marked = false;
-	        
+
 	        for (int i=0;i<keyindexl;++i) {
 	            newNode->keys[i] = l->keys[i];
 	        }
@@ -1048,7 +1085,7 @@ private:
 	        newNode->tag = false;
 	        newNode->size = nkeysl-1;
 	        newNode->leaf = true;
-	        
+
 	        info->numberOfNodesAllocated = 1;
 	        info->numberOfNodesToFreeze = 2;
 	        info->numberOfNodes = 2;
@@ -1071,22 +1108,7 @@ private:
 
 	bool rebalance_fast(wrapper_info<DEGREE,K> * const info, const int tid, const K& key, bool * const shouldRebalance)
 	{
-	    abtree_Node<DEGREE,K> * p0 = new abtree_Node<DEGREE,K>();
-	    abtree_Node<DEGREE,K> * p1 = new abtree_Node<DEGREE,K>();
-	    abtree_Node<DEGREE,K> * p2 = new abtree_Node<DEGREE,K>();
-	    p0->marked = false;
-	    p1->marked = false;
-	    p2->marked = false;
-	
-	    // try to push into the next stack PAGE before starting the txn if we might encounter a page boundary
-//	    char stackptr = 0;
-//	    int rem = pagesize - (((long long) &stackptr) & pagesize);
-//	    const int estNeeded = 2000; // estimate on the space needed for stack frames of all callees beyond this point
-//	    if (rem < estNeeded) {
-//	        volatile char x[rem+8];
-//	        x[rem+7] = 0; // force page to load
-//	    }
-	    
+
 	TXN1: int attempts = MAX_FAST_HTM_RETRIES;
 	    int status = _xbegin();
 	    if (status == _XBEGIN_STARTED) {
@@ -1183,7 +1205,7 @@ private:
 	    p0->marked = false;
 	    p1->marked = false;
 	    p2->marked = false;
-	    
+
 //	    // try to push into the next stack PAGE before starting the txn if we might encounter a page boundary
 //	    char stackptr = 0;
 //	    int rem = pagesize - (((long long) &stackptr) & pagesize);
@@ -1192,7 +1214,7 @@ private:
 //	        volatile char x[rem+8];
 //	        x[rem+7] = 0; // force page to load
 //	    }
-	    
+
 	TXN1: int attempts = MAX_FAST_HTM_RETRIES;
 	    int status = _xbegin();
 	    if (status == _XBEGIN_STARTED) {
@@ -1288,7 +1310,7 @@ private:
 	    abtree_Node<DEGREE,K> * gp = root;
 	    abtree_Node<DEGREE,K> * p = root;
 	    abtree_Node<DEGREE,K> * l = (abtree_Node<DEGREE,K> *) root->ptrs[0];
-	    
+
 	    // Unrolled special case for root:
 	    // Note: l is NOT tagged, but it might have only 1 child pointer, which would be a problem
 	    if (l->isLeaf()) {
@@ -1300,24 +1322,24 @@ private:
 	        scxRecordReady = rootJoinParent_fallback<false>(info, tid, p, l, p->getChildIndex(key));
 	        goto doscx;
 	    }
-	    
+
 	    // root is internal, and there is nothing wrong with it, so move on
 	    gp = p;
 	    p = l;
 	    l = l->getChild(key);
-	    
+
 	    // check each subsequent node for tag violations and degree violations
 	    while (!(l->isLeaf() || l->tag || (l->getABDegree() < MIN_DEGREE && !isSentinel(l)))) {
 	        gp = p;
 	        p = l;
 	        l = l->getChild(key);
 	    }
-	    
+
 	    if (!(l->tag || (l->getABDegree() < MIN_DEGREE && !isSentinel(l)))) {
 	        *shouldRebalance = false; // no violations to fix
 	        return true;
 	    }
-	    
+
 	    // tag operations take precedence
 	    if (l->tag) {
 	        if (p->getABDegree() + l->getABDegree() <= DEGREE+1) {
@@ -1357,7 +1379,7 @@ private:
 //	        assert(info->state == init_state);
 //	        assert(info->numberOfNodesAllocated >= 1);
 //	        assert(info->lastAbort == 0);
-	        
+
 	        bool retval = scx(tid, info);
 //	        reclaimMemoryAfterSCX(tid, info, false);
 			return retval;
@@ -1385,7 +1407,7 @@ private:
 	    newNode->leaf = c->leaf;
 	
 	    p->ptrs[lindex] = newNode;
-	    
+
 	    _xend();
 	//    REPLACE_ALLOCATED_NODE(tid, 0);
 	//    recordmgr->retire(tid, c);
@@ -1425,7 +1447,7 @@ private:
 	    for (int i=lindex+1;i<p->getABDegree();++i) {
 	        newp->ptrs[k2++] = p->ptrs[i];
 	    }
-	    
+
 	    newp->tag = false;
 	    newp->size = p->size + l->size - 1;
 	    newp->leaf = false;
@@ -1444,7 +1466,7 @@ private:
 	    const int sz = p->getABDegree() + l->getABDegree() - 1;
 	    const int leftsz = sz/2;
 	    const int rightsz = sz - leftsz;
-	    
+
 	    K keys[2*DEGREE+1];
 	    void * ptrs[2*DEGREE+1];
 	    int k1=0, k2=0;
@@ -1473,7 +1495,7 @@ private:
 	    for (int i=lindex+1;i<p->getABDegree();++i) {
 	        ptrs[k2++] = p->ptrs[i];
 	    }
-	    
+
 	    abtree_Node<DEGREE,K> * newp = new abtree_Node<DEGREE,K>();
 	    newp->scxRecord = dummy;
 	    newp->marked = false;
@@ -1488,7 +1510,7 @@ private:
 	
 	    k1=0;
 	    k2=0;
-	    
+
 	    for (int i=0;i<leftsz-1;++i) {
 	        newleft->keys[i] = keys[k1++];
 	    }
@@ -1498,14 +1520,14 @@ private:
 	    newleft->tag = false;
 	    newleft->size = leftsz;
 	    newleft->leaf = false;
-	    
+
 	    newp->keys[0] = keys[k1++];
 	    newp->ptrs[0] = newleft;
 	    newp->ptrs[1] = newright;
 	    newp->tag = (gp != root);
 	    newp->size = 2;
 	    newp->leaf = false;
-	    
+
 	    for (int i=0;i<rightsz-1;++i) {
 	        newright->keys[i] = keys[k1++];
 	    }
@@ -1515,9 +1537,9 @@ private:
 	    newright->tag = false;
 	    newright->size = rightsz;
 	    newright->leaf = false;
-	    
+
 	    gp->ptrs[pindex] = newp;
-	    
+
 	    _xend();
 	//    recordmgr->retire(tid, l);
 	//    recordmgr->retire(tid, p);
@@ -1553,7 +1575,7 @@ private:
 	        right = l;
 	        rightindex = lindex;
 	    }
-	    
+
 	    int k1=0, k2=0;
 	    for (int i=0;i<left->getKeyCount();++i) {
 	        newl->keys[k1++] = left->keys[i];
@@ -1569,7 +1591,7 @@ private:
 	    for (int i=0;i<right->getABDegree();++i) {
 	        newl->ptrs[k2++] = right->ptrs[i];
 	    }
-	    
+
 	    // create newp from p by:
 	    // 1. skipping the key for leftindex and child pointer for sindex
 	    // 2. replacing l with newl
@@ -1587,16 +1609,16 @@ private:
 	    }
 	    // replace l with newl
 	    newp->ptrs[lindex - (lindex > sindex)] = newl;
-	    
+
 	    newp->tag = false;
 	    newp->size = p->size - 1;
 	    newp->leaf = false;
 	    newl->tag = false;
 	    newl->size = l->size + s->size;
 	    newl->leaf = l->leaf;
-	    
-	    gp->ptrs[pindex] = newp;    
-	    
+
+	    gp->ptrs[pindex] = newp;
+
 	    _xend();
 	//    REPLACE_ALLOCATED_NODE(tid, 0);
 	//    REPLACE_ALLOCATED_NODE(tid, 1);
@@ -1626,7 +1648,7 @@ private:
 	    int leftsz = sz/2;
 	    int rightsz = sz-leftsz;
 	    kvpair<K,V> tosort[2*DEGREE+1];
-	    
+
 	    abtree_Node<DEGREE,K> * left;
 	    abtree_Node<DEGREE,K> * right;
 	    abtree_Node<DEGREE,K> * newleft;
@@ -1649,7 +1671,7 @@ private:
 	        rightindex = lindex;
 	    }
 	    assert(rightindex == 1+leftindex);
-	    
+
 	    // combine the contents of l and s (and one key from p)
 	    int k1=0, k2=0;
 	    for (int i=0;i<left->getKeyCount();++i) {
@@ -1674,10 +1696,10 @@ private:
 	    assert(k1 <= sz+1);
 	    assert(k2 == sz);
 	    assert(!left->isLeaf() || k1 == k2);
-	    
+
 	    // sort if this is a leaf
-	    if (left->isLeaf()) qsort(tosort, k1, sizeof(kvpair<K,V>), kv_compare<K,V>);
-	    
+//	    if (left->isLeaf()) qsort(tosort, k1, sizeof(kvpair<K,V>), kv_compare<K,V>);
+
 	    // distribute contents between newleft and newright
 	    k1=0;
 	    k2=0;
@@ -1696,7 +1718,7 @@ private:
 	    for (int i=0;i<rightsz;++i) {
 	        newright->ptrs[i] = tosort[k2++].val;
 	    }
-	    
+
 	    // create newp from p by replacing left with newleft and right with newright,
 	    // and replacing one key (between these two pointers)
 	    for (int i=0;i<p->getKeyCount();++i) {
@@ -1711,7 +1733,7 @@ private:
 	    newp->tag = false;
 	    newp->size = p->size;
 	    newp->leaf = false;
-	    
+
 	    newleft->tag = false;
 	    newleft->size = leftsz;
 	    newleft->leaf = left->leaf;
@@ -1720,7 +1742,7 @@ private:
 	    newright->leaf = right->leaf;
 	
 	    gp->ptrs[pindex] = newp;
-	    
+
 	    _xend();
 	//    REPLACE_ALLOCATED_NODE(tid, 0);
 	//    REPLACE_ALLOCATED_NODE(tid, 1);
@@ -1743,12 +1765,12 @@ private:
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, l, ptrsl) : llx(tid, l, ptrsl))) == NULL) return false;
 	    info->nodes[1] = l;
-	    
+
 	    void * ptrsc[DEGREE];
 	    abtree_Node<DEGREE,K> * c = (abtree_Node<DEGREE,K> *) l->ptrs[0];
 	    if ((info->scxRecordsSeen[2] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, c, ptrsc) : llx(tid, c, ptrsc))) == NULL) return false;
 	    info->nodes[2] = c;
-	    
+
 	    // prepare SCX record for update
 	    abtree_Node<DEGREE,K> * newNode = new abtree_Node<DEGREE,K>();
 	    newNode->marked = false;
@@ -1793,7 +1815,7 @@ private:
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[2] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, l, ptrsl) : llx(tid, l, ptrsl))) == NULL) return false;
 	    info->nodes[2] = l;
-	    
+
 	    // create new nodes for update
 	    abtree_Node<DEGREE,K> * newNode = new abtree_Node<DEGREE,K>();
 	    newNode->marked = false;
@@ -1824,7 +1846,7 @@ private:
 	    for (int i=lindex+1;i<p->getABDegree();++i) {
 	        newNode->ptrs[k2++] = p->ptrs[i];
 	    }
-	    
+
 	    newNode->tag = false;
 	    newNode->size = p->size + l->size - 1;
 	    newNode->leaf = false;
@@ -1860,12 +1882,12 @@ private:
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[2] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, l, ptrsl) : llx(tid, l, ptrsl))) == NULL) return false;
 	    info->nodes[2] = l;
-	    
+
 	    // create new nodes for update
 	    const int sz = p->getABDegree() + l->getABDegree() - 1;
 	    const int leftsz = sz/2;
 	    const int rightsz = sz - leftsz;
-	    
+
 	    K keys[sz-1];
 	    void * ptrs[sz];
 	    int k1=0, k2=0;
@@ -1899,7 +1921,7 @@ private:
 	    assert(l->tag);
 	    assert(k1 <= sz-1);
 	    assert(k2 <= sz);
-	    
+
 	    abtree_Node<DEGREE,K> * newp = new abtree_Node<DEGREE,K>();
 	    newp->scxRecord = dummy;
 	    newp->marked = false;
@@ -1914,7 +1936,7 @@ private:
 	
 	    k1=0;
 	    k2=0;
-	    
+
 	    for (int i=0;i<leftsz-1;++i) {
 	        newleft->keys[i] = keys[k1++];
 	    }
@@ -1924,14 +1946,14 @@ private:
 	    newleft->tag = false;
 	    newleft->size = leftsz;
 	    newleft->leaf = false;
-	    
+
 	    newp->keys[0] = keys[k1++];
 	    newp->ptrs[0] = newleft;
 	    newp->ptrs[1] = newright;
 	    newp->tag = (gp != root);
 	    newp->size = 2;
 	    newp->leaf = false;
-	    
+
 	    for (int i=0;i<rightsz-1;++i) {
 	        newright->keys[i] = keys[k1++];
 	    }
@@ -1941,7 +1963,7 @@ private:
 	    newright->tag = false;
 	    newright->size = rightsz;
 	    newright->leaf = false;
-	    
+
 	    // prepare SCX record for update
 	    info->numberOfNodesAllocated = 3;
 	    info->numberOfNodesToFreeze = 3;
@@ -1959,7 +1981,7 @@ private:
 	    if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, gp, ptrsgp) : llx(tid, gp, ptrsgp))) == NULL) return false;
 	    if (gp->ptrs[pindex] != p) return false;
 	    info->nodes[0] = gp;
-	    
+
 	    void * ptrsp[DEGREE];
 	    if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, p, ptrsp) : llx(tid, p, ptrsp))) == NULL) return false;
 	    if (p->ptrs[lindex] != l) return false;
@@ -1968,7 +1990,7 @@ private:
 	
 	    int freezeorderl = (sindex > lindex) ? 2 : 3;
 	    int freezeorders = (sindex > lindex) ? 3 : 2;
-	    
+
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[freezeorderl] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, l, ptrsl) : llx(tid, l, ptrsl))) == NULL) return false;
 	    info->nodes[freezeorderl] = l;
@@ -1976,7 +1998,7 @@ private:
 	    void * ptrss[DEGREE];
 	    if ((info->scxRecordsSeen[freezeorders] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, s, ptrss) : llx(tid, s, ptrss))) == NULL) return false;
 	    info->nodes[freezeorders] = s;
-	    
+
 	    // create new nodes for update
 	    abtree_Node<DEGREE,K> * newp = new abtree_Node<DEGREE,K>();
 	    newp->scxRecord = dummy;
@@ -2003,7 +2025,7 @@ private:
 	        right = l;
 	        rightindex = lindex;
 	    }
-	    
+
 	    int k1=0, k2=0;
 	    for (int i=0;i<left->getKeyCount();++i) {
 	        newl->keys[k1++] = left->keys[i];
@@ -2019,7 +2041,7 @@ private:
 	    for (int i=0;i<right->getABDegree();++i) {
 	        newl->ptrs[k2++] = right->ptrs[i];
 	    }
-	    
+
 	    // create newp from p by:
 	    // 1. skipping the key for leftindex and child pointer for sindex
 	    // 2. replacing l with newl
@@ -2037,14 +2059,14 @@ private:
 	    }
 	    // replace l with newl
 	    newp->ptrs[lindex - (lindex > sindex)] = newl;
-	    
+
 	    newp->tag = false;
 	    newp->size = p->size - 1;
 	    newp->leaf = false;
 	    newl->tag = false;
 	    newl->size = l->size + s->size;
 	    newl->leaf = l->leaf;
-	    
+
 	    assert(!gp->tag);
 	    assert(!p->tag);
 	    assert(!left->tag);
@@ -2062,7 +2084,7 @@ private:
 	    info->numberOfNodes = 4;
 	    info->field = &gp->ptrs[pindex];
 	    info->newNode = newp;
-	    
+
 	    return true;
 	}
 
@@ -2074,7 +2096,7 @@ private:
 	    if ((info->scxRecordsSeen[0] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, gp, ptrsgp) : llx(tid, gp, ptrsgp))) == NULL) return false;
 	    if (gp->ptrs[pindex] != p) return false;
 	    info->nodes[0] = gp;
-	    
+
 	    void * ptrsp[DEGREE];
 	    if ((info->scxRecordsSeen[1] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, p, ptrsp) : llx(tid, p, ptrsp))) == NULL) return false;
 	    if (p->ptrs[lindex] != l) return false;
@@ -2083,7 +2105,7 @@ private:
 	
 	    int freezeorderl = (sindex > lindex) ? 2 : 3;
 	    int freezeorders = (sindex > lindex) ? 3 : 2;
-	    
+
 	    void * ptrsl[DEGREE];
 	    if ((info->scxRecordsSeen[freezeorderl] = (abtree_SCXRecord<DEGREE,K> *) (in_txn ? llx_txn(tid, l, ptrsl) : llx(tid, l, ptrsl))) == NULL) return false;
 	    info->nodes[freezeorderl] = l;
@@ -2110,7 +2132,7 @@ private:
 	    int leftsz = sz/2;
 	    int rightsz = sz-leftsz;
 	    kvpair<K,V> tosort[sz+1];
-	    
+
 	    abtree_Node<DEGREE,K> * left;
 	    abtree_Node<DEGREE,K> * right;
 	    abtree_Node<DEGREE,K> * newleft;
@@ -2133,7 +2155,7 @@ private:
 	        rightindex = lindex;
 	    }
 	    assert(rightindex == 1+leftindex);
-	    
+
 	    // combine the contents of l and s (and one key from p)
 	    int k1=0, k2=0;
 	    for (int i=0;i<left->getKeyCount();++i) {
@@ -2158,10 +2180,10 @@ private:
 	    assert(k1 <= sz+1);
 	    assert(k2 == sz);
 	    assert(!left->isLeaf() || k1 == k2);
-	    
+
 	    // sort if this is a leaf
-	    if (left->isLeaf()) qsort(tosort, k1, sizeof(kvpair<K,V>), kv_compare<K,V>);
-	    
+//	    if (left->isLeaf()) qsort(tosort, k1, sizeof(kvpair<K,V>), kv_compare<K,V>);
+
 	    // distribute contents between newleft and newright
 	    k1=0;
 	    k2=0;
@@ -2172,7 +2194,6 @@ private:
 	        newleft->ptrs[i] = tosort[k2++].val;
 	    }
 	    // reserve one key for the parent (to go between newleft and newright))
-	//    K keyp = tosort[k1].key;
 		K keyp;
 		keyp = tosort[k1].key;
 	    if (!left->isLeaf()) ++k1;
@@ -2182,7 +2203,7 @@ private:
 	    for (int i=0;i<rightsz;++i) {
 	        newright->ptrs[i] = tosort[k2++].val;
 	    }
-	    
+
 	    // create newp from p by replacing left with newleft and right with newright,
 	    // and replacing one key (between these two pointers)
 	    for (int i=0;i<p->getKeyCount();++i) {
@@ -2197,7 +2218,7 @@ private:
 	    newp->tag = false;
 	    newp->size = p->size;
 	    newp->leaf = false;
-	    
+
 	    newleft->tag = false;
 	    newleft->size = leftsz;
 	    newleft->leaf = left->leaf;
@@ -2211,7 +2232,7 @@ private:
 	    info->numberOfNodes = 4;
 	    info->field = &gp->ptrs[pindex];
 	    info->newNode = newp;
-	    
+
 	    return true;
 	}
 
@@ -2279,7 +2300,7 @@ private:
 	        if (scxRecordsSeen[i] == LLX_RETURN_IS_LEAF) {
 	            continue; // do not freeze leaves
 	        }
-	        
+
 	        bool successfulCAS = __sync_bool_compare_and_swap(&nodes[i]->scxRecord, scxRecordsSeen[i], scx);
 	        abtree_SCXRecord<DEGREE,K> * exp = nodes[i]->scxRecord;
 	        if (!successfulCAS && exp != scx) { // if work was not done
@@ -2318,7 +2339,7 @@ private:
 	    abtree_Node<DEGREE,K> * expected = nodes[1];
 	    __sync_bool_compare_and_swap(scx->field, expected, newNode);
 	    scx->state = abtree_SCXRecord<DEGREE,K>::STATE_COMMITTED;
-	    
+
 	    return abtree_SCXRecord<DEGREE,K>::STATE_COMMITTED; // success
 	}
 
@@ -2507,6 +2528,25 @@ private:
         }
         /*******************************************************************/
 
+	void print_rec(abtree_Node<DEGREE,K> *root, int level)
+	{
+		int i;
+
+		printf("[LVL %4d]: ", level);
+		fflush(stdout);
+		root->print();
+
+		if (!root || root->leaf) return;
+
+		for (i=0; i <= root->getKeyCount(); i++)
+			if (root->ptrs[i]) print_rec((abtree_Node<DEGREE,K> *)root->ptrs[i], level + 1);
+	}
+
+	void print_helper()
+	{
+		if (!root) printf("Empty tree\n");
+		else       print_rec(root, 0);
+	}
 };
 
 #define ABTREE_BROWN_3PATH_TEMPL template<typename K, typename V, int DEGREE, int MIN_DEGREE>
