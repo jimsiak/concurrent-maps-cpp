@@ -142,13 +142,20 @@ public:
 		node_t **node_stack = (node_t **)stack;
 		node_t *new_node;
 		node_t *connection_point;
-		node_t *n = node_stack[stack_top];
 
 		if (stack_top >= 0 && key < node_stack[stack_top]->key)
 			ht_insert(tdata->ht, &node_stack[stack_top]->left, NULL);
 		else if (stack_top >= 0 && key > node_stack[stack_top]->key)
 			ht_insert(tdata->ht, &node_stack[stack_top]->right, NULL);
 
+		//> If tree is empty
+		if (stack_top == -1) {
+			*privcopy = new node_t(key, value);
+			*connpoint_stack_index = -1;
+			return NULL;
+		}
+
+		node_t *n = node_stack[stack_top];
 		if (n->key == key && n->marked) {
 			new_node = node_new_copy(n);
 			ht_insert(tdata->ht, &n->left, new_node->left);
@@ -165,6 +172,7 @@ public:
 		*privcopy = (void *)new_node;
 		return (void *)connection_point;
 	}
+
 	void *delete_with_copy(const K& key, void **stack, int *unused,
 	                       int *_stack_top, void **privcopy,
 	                       int *connpoint_stack_index)
