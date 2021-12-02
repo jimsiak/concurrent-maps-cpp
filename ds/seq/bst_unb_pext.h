@@ -35,9 +35,11 @@ public:
 	char *name() { return "BST Unbalanced Partially-External"; }
 
 	void print() { print_helper(); };
-//	unsigned long long size() { return size_rec(root); };
+	unsigned long long size() { return size_rec(root); };
 
 private:
+
+	typedef bst_unb_pext<K, V> tree_t;
 
 	struct node_t {
 		K key;
@@ -50,10 +52,6 @@ private:
 		     left(NULL), right(NULL), marked(false) {};
 	};
 
-	node_t *root;
-
-private:
-
 	inline node_t *node_new_copy(node_t *src)
 	{
 		node_t *ret = new node_t(src->key, src->value);
@@ -61,6 +59,122 @@ private:
 		ret->right = src->right;
 		ret->marked = src->marked;
 		return ret;
+	}
+
+	node_t *root;
+
+private:
+	/**
+	 * Used by CA but not from the public interface.
+	 **/
+	//> Removes the max key node from the tree and returns it.
+	node_t *get_max_key_node(tree_t *tree)
+	{
+		assert(tree->root != NULL);
+
+		if (tree->root->right == NULL) {
+			node_t *ret = tree->root;
+			tree->root = tree->root->left;
+			return ret;
+		}
+
+		node_t *prev = tree->root, *curr = tree->root->right;
+		while (curr->right != NULL) {
+			prev = curr;
+			curr = curr->right;
+		}
+
+		node_t *ret = curr;
+		prev->right = curr->left;
+		return ret;
+	}
+	void add_max_key_node(tree_t *tree, node_t *n)
+	{
+		n->left = n->right = NULL;
+
+		if (tree->root == NULL) {
+			tree->root = n;
+			return;
+		}
+
+		node_t *curr = tree->root;
+		while (curr->right != NULL) curr = curr->right;
+		curr->right = n;
+	}
+
+public:
+	/**
+	 * CA-locks adapting methods.
+	 **/
+	const K& max_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (curr->right != NULL) curr = curr->right;
+		return curr->key;
+	}
+
+	const K& min_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (curr->left != NULL) curr = curr->left;
+		return curr->key;
+	}
+
+	//> Splits the tree in two trees.
+	//> The left part is returned and the right part is put in *right_part
+	void *split(void **_right_part)
+	{
+		tree_t **right_part = (tree_t **)_right_part;
+		tree_t *right_tree;
+
+		*right_part = NULL;
+		if (!root) return NULL;
+
+		right_tree = new tree_t(this->INF_KEY, this->NO_VALUE, 88);
+		right_tree->root = root->right;
+		*right_part = right_tree;
+
+		node_t *old_root = root;
+		root = root->left;
+		add_max_key_node(this, old_root);
+		return (void *)this;
+	}
+
+	//> Joins 'this' and tree_right and returns the joint tree
+	void *join(void *_tree_right)
+	{
+		tree_t *tree_right = (tree_t *)_tree_right;
+		tree_t *tree_left = this;
+		node_t *new_internal;
+
+		if (!tree_left->root) return tree_right;
+		else if (!tree_right->root) return tree_left;
+
+		node_t *max_key_node = get_max_key_node(tree_left);
+		max_key_node->left = tree_left->root;
+		max_key_node->right = tree_right->root;
+		tree_left->root = max_key_node;
+		return (void *)tree_left;
+	}
+
+	bool is_empty() { return (root == NULL); }
+	long long get_key_sum() { return get_key_sum_rec(root); }
+
+	long long get_key_sum_rec(node_t *n)
+	{
+		if (!n) return 0;
+		long long n_sum = (long long)(n->marked ? 0 : n->key);
+		return get_key_sum_rec(n->left) + n_sum + get_key_sum_rec(n->right);
+	}
+
+	bool validate(bool print) { return validate_helper(print); };
+
+	unsigned long long size_rec(node_t *n)
+	{
+		if (n == NULL) return 0;
+		return size_rec(n->left) + (n->marked ? 0 : 1) + size_rec(n->right);
 	}
 
 public:
@@ -335,7 +449,7 @@ private:
 			validate_rec(right, _th);
 	}
 	
-	inline int validate_helper()
+	inline int validate_helper(bool print)
 	{
 		int check_bst = 0;
 		total_paths = 0;
@@ -349,14 +463,16 @@ private:
 	
 		check_bst = (bst_violations == 0);
 	
-		printf("Validation:\n");
-		printf("=======================\n");
-		printf("  BST Violation: %s\n",
-		       check_bst ? "No [OK]" : "Yes [ERROR]");
-		printf("  Tree size (UnMarked / Marked): %8d / %8d\n", total_nodes - marked_nodes, marked_nodes);
-		printf("  Total paths: %d\n", total_paths);
-		printf("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
-		printf("\n");
+		if (print) {
+			printf("Validation:\n");
+			printf("=======================\n");
+			printf("  BST Violation: %s\n",
+			       check_bst ? "No [OK]" : "Yes [ERROR]");
+			printf("  Tree size (UnMarked / Marked): %8d / %8d\n", total_nodes - marked_nodes, marked_nodes);
+			printf("  Total paths: %d\n", total_paths);
+			printf("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
+			printf("\n");
+		}
 	
 		return check_bst;
 	}
@@ -439,5 +555,5 @@ const std::pair<V,bool> BST_UNB_PEXT_FUNCT::remove(const int tid, const K& key)
 BST_UNB_PEXT_TEMPL
 bool BST_UNB_PEXT_FUNCT::validate()
 {
-	return validate_helper();
+	return validate(true);
 }

@@ -39,6 +39,8 @@ public:
 
 private:
 
+	typedef bst_unb_int<K, V> tree_t;
+
 	struct node_t {
 		K key;
 		V value;
@@ -49,10 +51,6 @@ private:
 		     left(NULL), right(NULL) {};
 	};
 
-	node_t *root;
-
-private:
-
 	inline node_t *node_new_copy(node_t *src)
 	{
 		node_t *ret = new node_t(src->key, src->value);
@@ -60,6 +58,115 @@ private:
 		ret->right = src->right;
 		return ret;
 	}
+
+	node_t *root;
+
+private:
+	/**
+	 * Used by CA but not from the public interface.
+	 **/
+	//> Removes the max key node from the tree and returns it.
+	node_t *get_max_key_node(tree_t *tree)
+	{
+		assert(tree->root != NULL);
+
+		if (tree->root->right == NULL) {
+			node_t *ret = tree->root;
+			tree->root = tree->root->left;
+			return ret;
+		}
+
+		node_t *prev = tree->root, *curr = tree->root->right;
+		while (curr->right != NULL) {
+			prev = curr;
+			curr = curr->right;
+		}
+
+		node_t *ret = curr;
+		prev->right = curr->left;
+		return ret;
+	}
+	void add_max_key_node(tree_t *tree, node_t *n)
+	{
+		n->left = n->right = NULL;
+
+		if (tree->root == NULL) {
+			tree->root = n;
+			return;
+		}
+
+		node_t *curr = tree->root;
+		while (curr->right != NULL) curr = curr->right;
+		curr->right = n;
+	}
+
+public:
+	/**
+	 * CA-locks adapting methods.
+	 **/
+	const K& max_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (curr->right != NULL) curr = curr->right;
+		return curr->key;
+	}
+
+	const K& min_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (curr->left != NULL) curr = curr->left;
+		return curr->key;
+	}
+
+	//> Splits the tree in two trees.
+	//> The left part is returned and the right part is put in *right_part
+	void *split(void **_right_part)
+	{
+		tree_t **right_part = (tree_t **)_right_part;
+		tree_t *right_tree;
+
+		*right_part = NULL;
+		if (!root) return NULL;
+
+		right_tree = new tree_t(this->INF_KEY, this->NO_VALUE, 88);
+		right_tree->root = root->right;
+		*right_part = right_tree;
+
+		node_t *old_root = root;
+		root = root->left;
+		add_max_key_node(this, old_root);
+		return (void *)this;
+	}
+
+	//> Joins 'this' and tree_right and returns the joint tree
+	void *join(void *_tree_right)
+	{
+		tree_t *tree_right = (tree_t *)_tree_right;
+		tree_t *tree_left = this;
+		node_t *new_internal;
+
+		if (!tree_left->root) return tree_right;
+		else if (!tree_right->root) return tree_left;
+
+		node_t *max_key_node = get_max_key_node(tree_left);
+		max_key_node->left = tree_left->root;
+		max_key_node->right = tree_right->root;
+		tree_left->root = max_key_node;
+		return (void *)tree_left;
+	}
+
+	bool is_empty() { return (root == NULL); }
+	long long get_key_sum() { return get_key_sum_rec(root); }
+
+	long long get_key_sum_rec(node_t *n)
+	{
+		if (!n) return 0;
+		return get_key_sum_rec(n->left) + (long long)n->key + get_key_sum_rec(n->right);
+	}
+
+	bool validate(bool print) { return validate_helper(print); };
 
 public:
 	/**
@@ -240,7 +347,7 @@ private:
 	const V delete_helper(const K& key);
 	int update_helper(const K& key, const V& value);
 
-	int validate_helper();
+	int validate_helper(bool print);
 	void validate_rec(node_t *root, int _th);
 
 	void print_rec(node_t *root, int level);
@@ -293,7 +400,7 @@ const std::pair<V,bool> FUNCT::remove(const int tid, const K& key)
 TEMPL
 bool FUNCT::validate()
 {
-	return validate_helper();
+	return validate(true);
 }
 
 
@@ -508,7 +615,7 @@ void FUNCT::validate_rec(node_t *root, int _th)
 }
 
 TEMPL
-int FUNCT::validate_helper()
+int FUNCT::validate_helper(bool print)
 {
 	int check_bst = 0;
 	total_paths = 0;
@@ -521,16 +628,18 @@ int FUNCT::validate_helper()
 
 	check_bst = (bst_violations == 0);
 
-	log_info("Validation:\n");
-	log_info("=======================\n");
-	log_info("  BST Violation: %s\n",
-	         check_bst ? "No [OK]" : "Yes [ERROR]");
-	log_info("  Tree size: %8d\n", total_nodes);
-	log_info("  Total paths: %d\n", total_paths);
-	log_info("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
-//	KEY_PRINT(key_in_min_path, "  Key of min path: ", "\n");
-//	KEY_PRINT(key_in_max_path, "  Key of max path: ", "\n");
-	log_info("\n");
+	if (print) {
+		log_info("Validation:\n");
+		log_info("=======================\n");
+		log_info("  BST Violation: %s\n",
+		         check_bst ? "No [OK]" : "Yes [ERROR]");
+		log_info("  Tree size: %8d\n", total_nodes);
+		log_info("  Total paths: %d\n", total_paths);
+		log_info("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
+//		KEY_PRINT(key_in_min_path, "  Key of min path: ", "\n");
+//		KEY_PRINT(key_in_max_path, "  Key of max path: ", "\n");
+		log_info("\n");
+	}
 
 	return check_bst;
 }

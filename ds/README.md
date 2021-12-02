@@ -101,7 +101,10 @@ All the above sequential data structures can be protected by any of the followin
 * Relaxed-balance Partially External AVL BST by Bronson et. al [[2]](#2).
 * Relaxed-balance Internal AVL BST by Drachsler et. al [[3]](#3).
 * Relaxed-balance Partially External AVL BST by Crain et. al (a.k.a., Contention-friendly) [[4]](#4).
-* Contention-adaptive Treap by Winblad et. al [[5]](#5).
+* Contention-adapting Unbalanced Internal BST.
+* Contention-adapting Unbalanced PartiallyExternal BST.
+* Contention-adapting Unbalanced External BST.
+* Contention-adapting Treap by Winblad et. al [[5]](#5).
 
 ### Lock-free
 

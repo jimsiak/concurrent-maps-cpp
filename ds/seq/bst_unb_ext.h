@@ -39,6 +39,8 @@ public:
 
 private:
 
+	typedef bst_unb_ext<K, V> tree_t;
+
 	struct node_t {
 
 		#define IS_EXTERNAL_NODE(node) \
@@ -54,6 +56,75 @@ private:
 	};
 
 	node_t *root;
+
+public:
+	/**
+	 * CA-locks adapting methods.
+	 **/
+	const K& max_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (!IS_EXTERNAL_NODE(curr)) curr = curr->right;
+		return curr->key;
+	}
+
+	const K& min_key()
+	{
+		assert(root != NULL);
+		node_t *curr = root;
+		while (!IS_EXTERNAL_NODE(curr)) curr = curr->left;
+		return curr->key;
+	}
+
+	//> Splits the tree in two trees.
+	//> The left part is returned and the right part is put in *right_part
+	void *split(void **_right_part)
+	{
+		tree_t **right_part = (tree_t **)_right_part;
+		tree_t *right_tree;
+
+		*right_part = NULL;
+		if (!root) return NULL;
+		if (IS_EXTERNAL_NODE(root)) return root;
+
+		//> root is not a leaf, we split its children. We do not care about
+		//> the key of root since it is just an internal routing node.
+		right_tree = new tree_t(this->INF_KEY, this->NO_VALUE, 88);
+		right_tree->root = root->right;
+		*right_part = right_tree;
+		root = root->left;
+		return (void *)this;
+	}
+
+	//> Joins 'this' and tree_right and returns the joint tree
+	void *join(void *_tree_right)
+	{
+		tree_t *tree_right = (tree_t *)_tree_right;
+		tree_t *tree_left = this;
+		node_t *new_internal;
+
+		if (!tree_left->root) return tree_right;
+		else if (!tree_right->root) return tree_left;
+
+		new_internal = new node_t(tree_left->max_key(), this->NO_VALUE);
+		new_internal->left = tree_left->root;
+		new_internal->right = tree_right->root;
+		tree_left->root = new_internal;
+		return (void *)tree_left;
+	}
+
+	bool is_empty() { return (root == NULL); }
+	long long get_key_sum() { return get_key_sum_rec(root); }
+
+	long long get_key_sum_rec(node_t *n)
+	{
+		if (!n) return 0;
+		if (IS_EXTERNAL_NODE(n)) return (unsigned long long)n->key;
+		return get_key_sum_rec(n->left) + get_key_sum_rec(n->right);
+	}
+
+	bool validate(bool print) { return validate_helper(print); };
 
 public:
 	/**
@@ -206,7 +277,7 @@ private:
 	const V delete_helper(const K& key);
 	int update_helper(const K& key, const V& value);
 
-	int validate_helper();
+	int validate_helper(bool print);
 	void validate_rec(node_t *root, int _th);
 
 	void print_rec(node_t *root, int level);
@@ -266,7 +337,7 @@ const std::pair<V,bool> BST_UNB_EXT_FUNCT::remove(const int tid, const K& key)
 BST_UNB_EXT_TEMPL
 bool BST_UNB_EXT_FUNCT::validate()
 {
-	return validate_helper();
+	return validate(true);
 }
 
 /**
@@ -437,7 +508,8 @@ BST_UNB_EXT_TEMPL
 unsigned long long BST_UNB_EXT_FUNCT::size_rec(node_t *root)
 {
 	if (root == NULL) return 0;
-	else return size_rec(root->left) + 1 + size_rec(root->right);
+	if (IS_EXTERNAL_NODE(root)) return 1;
+	else return size_rec(root->left) + size_rec(root->right);
 }
 
 BST_UNB_EXT_TEMPL
@@ -475,7 +547,7 @@ void BST_UNB_EXT_FUNCT::validate_rec(node_t *root, int _th)
 }
 
 BST_UNB_EXT_TEMPL
-int BST_UNB_EXT_FUNCT::validate_helper()
+int BST_UNB_EXT_FUNCT::validate_helper(bool print)
 {
 	int check_bst = 0;
 	total_paths = 0;
@@ -488,16 +560,18 @@ int BST_UNB_EXT_FUNCT::validate_helper()
 
 	check_bst = (bst_violations == 0);
 
-	log_info("Validation:\n");
-	log_info("=======================\n");
-	log_info("  BST Violation: %s\n",
-	         check_bst ? "No [OK]" : "Yes [ERROR]");
-	log_info("  Tree size: %8d\n", total_nodes);
-	log_info("  Total paths: %d\n", total_paths);
-	log_info("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
-//	KEY_PRINT(key_in_min_path, "  Key of min path: ", "\n");
-//	KEY_PRINT(key_in_max_path, "  Key of max path: ", "\n");
-	log_info("\n");
+	if (print) {
+		log_info("Validation:\n");
+		log_info("=======================\n");
+		log_info("  BST Violation: %s\n",
+		         check_bst ? "No [OK]" : "Yes [ERROR]");
+		log_info("  Tree size: %8d\n", total_nodes);
+		log_info("  Total paths: %d\n", total_paths);
+		log_info("  Min/max paths length: %d/%d\n", min_path_len, max_path_len);
+//		KEY_PRINT(key_in_min_path, "  Key of min path: ", "\n");
+//		KEY_PRINT(key_in_max_path, "  Key of max path: ", "\n");
+		log_info("\n");
+	}
 
 	return check_bst;
 }
