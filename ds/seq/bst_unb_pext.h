@@ -165,7 +165,7 @@ public:
 	long long get_key_sum_rec(node_t *n)
 	{
 		if (!n) return 0;
-		long long n_sum = (long long)(n->marked ? 0 : n->key);
+		long long n_sum = (n->marked ? (long long)0 : (long long)n->key);
 		return get_key_sum_rec(n->left) + n_sum + get_key_sum_rec(n->right);
 	}
 
