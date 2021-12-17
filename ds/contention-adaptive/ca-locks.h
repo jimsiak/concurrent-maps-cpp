@@ -69,7 +69,6 @@ private:
 			this->is_valid_ = 1;
 			this->lock_statistics = 0;
 			this->root = root;
-//			this->root = new SEQ_DS();
 			pthread_spin_init(&lock_, PTHREAD_PROCESS_SHARED);
 		}
 	
@@ -118,7 +117,7 @@ private:
 
 private:
 
-	base_node_t *get_base_node(route_node_t **parent, route_node_t **gparent, K key)
+	base_node_t *get_base_node(route_node_t **parent, route_node_t **gparent, const K& key)
 	{
 		route_node_t *p = NULL, *gp = NULL;
 		node_t *curr = root;
@@ -127,8 +126,8 @@ private:
 			gp = p;
 			p = (route_node_t *)curr;
 			rnode = (route_node_t *)curr;
-			if (key < rnode->key || key == rnode->key) curr = rnode->left;
-			else                                       curr = rnode->right;
+			if (key <= rnode->key) curr = rnode->left;
+			else                   curr = rnode->right;
 		}
 		*parent = p;
 		*gparent = gp;
