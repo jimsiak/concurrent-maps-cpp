@@ -270,7 +270,6 @@ public:
 private:
 
 	inline void traverse(const K& key, node_t **gparent, node_t **parent, node_t **leaf);
-	inline void find_successor(node_t *node, node_t **parent, node_t **leaf);
 
 	const V lookup_helper(const K& key);
 	const V insert_helper(const K& key, const V& value);
